@@ -1,7 +1,10 @@
+mod ir;
 mod parser;
 mod project;
+mod runtime;
 
 use project::Project;
+
 use sdl3::event::Event;
 use sdl3::keyboard::Keycode;
 use sdl3::pixels::Color;
@@ -9,10 +12,8 @@ use sdl3::rect::Rect;
 
 const TOP_W: u32 = 400;
 const TOP_H: u32 = 240;
-
 const BOTTOM_W: u32 = 320;
 const BOTTOM_H: u32 = 240;
-
 const GAP: u32 = 20;
 const SCALE: u32 = 2;
 
@@ -23,21 +24,6 @@ fn main() -> Result<(), String> {
 
     let project = Project::load(&project_path)?;
 
-    for source in &project.sources {
-        let analysis = parser::parse_file(source)?;
-
-        println!("{}", analysis.path);
-
-        for function in &analysis.functions {
-            println!("  function: {function}");
-        }
-
-        for call in &analysis.calls {
-            println!("  call: {call}");
-        }
-
-        println!();
-    }
     println!("================================");
     println!("|           HBView3            |");
     println!("================================");
@@ -58,6 +44,33 @@ fn main() -> Result<(), String> {
     );
     println!();
 
+    let mut runtime = runtime::Runtime::new();
+
+    for source in &project.sources {
+        let program = parser::parse_file(source)?;
+
+        println!("{}", source.display());
+
+        for function in &program.functions {
+            println!("  function: {}", function.name);
+
+            for statement in &function.body {
+                match statement {
+                    ir::Statement::Call(name) => {
+                        println!("    call: {name}");
+                    }
+                    ir::Statement::Return => {
+                        println!("    return");
+                    }
+                }
+            }
+        }
+
+        runtime.execute(&program);
+
+        println!();
+    }
+
     for source in &project.sources {
         println!("  [C/C++] {}", source.display());
     }
@@ -77,7 +90,6 @@ fn main() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     let mut canvas = window.into_canvas();
-
     let mut events = sdl.event_pump().map_err(|e| e.to_string())?;
 
     'running: loop {
@@ -88,7 +100,6 @@ fn main() -> Result<(), String> {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'running,
-
                 _ => {}
             }
         }
@@ -96,14 +107,12 @@ fn main() -> Result<(), String> {
         canvas.set_draw_color(Color::RGB(30, 30, 30));
         canvas.clear();
 
-        // Top screen
         canvas.set_draw_color(Color::RGB(0, 0, 0));
 
         canvas
             .fill_rect(Rect::new(0, 0, TOP_W * SCALE, TOP_H * SCALE))
             .map_err(|e| e.to_string())?;
 
-        // Bottom screen
         canvas
             .fill_rect(Rect::new(
                 ((TOP_W - BOTTOM_W) * SCALE / 2) as i32,

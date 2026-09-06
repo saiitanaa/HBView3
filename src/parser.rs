@@ -1,14 +1,10 @@
 use std::path::Path;
 
-use tree_sitter::{Language, Parser};
+use tree_sitter::{Language, Node, Parser};
 
-pub struct SourceAnalysis {
-    pub path: String,
-    pub functions: Vec<String>,
-    pub calls: Vec<String>,
-}
+use crate::ir::{Function, Program, Statement};
 
-pub fn parse_file(path: &Path) -> Result<SourceAnalysis, String> {
+pub fn parse_file(path: &Path) -> Result<Program, String> {
     let source = std::fs::read_to_string(path)
         .map_err(|error| format!("Failed to read {}: {error}", path.display()))?;
 
@@ -25,20 +21,10 @@ pub fn parse_file(path: &Path) -> Result<SourceAnalysis, String> {
         .ok_or_else(|| "Failed to parse source file".to_string())?;
 
     let mut functions = Vec::new();
-    let mut calls = Vec::new();
 
-    collect_nodes(
-        tree.root_node(),
-        source.as_bytes(),
-        &mut functions,
-        &mut calls,
-    );
+    collect_functions(tree.root_node(), source.as_bytes(), &mut functions)?;
 
-    Ok(SourceAnalysis {
-        path: path.display().to_string(),
-        functions,
-        calls,
-    })
+    Ok(Program { functions })
 }
 
 fn language_for_path(path: &Path) -> Result<Language, String> {
@@ -49,39 +35,75 @@ fn language_for_path(path: &Path) -> Result<Language, String> {
     }
 }
 
-fn collect_nodes(
-    node: tree_sitter::Node,
+fn collect_functions(
+    node: Node,
     source: &[u8],
-    functions: &mut Vec<String>,
-    calls: &mut Vec<String>,
-) {
+    functions: &mut Vec<Function>,
+) -> Result<(), String> {
     if node.kind() == "function_definition" {
-        if let Some(name) = node
+        let declarator = node
             .child_by_field_name("declarator")
-            .and_then(|declarator| find_function_name(declarator, source))
-        {
-            functions.push(name);
-        }
-    }
+            .ok_or_else(|| "Function declarator not found".to_string())?;
 
-    if node.kind() == "call_expression" {
-        if let Some(function) = node.child_by_field_name("function") {
-            if let Ok(name) = function.utf8_text(source) {
-                if !calls.iter().any(|call| call == name) {
-                    calls.push(name.to_string());
-                }
-            }
-        }
+        let name = find_function_name(declarator, source)
+            .ok_or_else(|| "Function name not found".to_string())?;
+
+        let body = node
+            .child_by_field_name("body")
+            .ok_or_else(|| "Function body not found".to_string())?;
+
+        let statements = parse_statements(body, source)?;
+
+        functions.push(Function {
+            name,
+            body: statements,
+        });
+
+        return Ok(());
     }
 
     let mut cursor = node.walk();
 
     for child in node.children(&mut cursor) {
-        collect_nodes(child, source, functions, calls);
+        collect_functions(child, source, functions)?;
     }
+
+    Ok(())
 }
 
-fn find_function_name(node: tree_sitter::Node, source: &[u8]) -> Option<String> {
+fn parse_statements(node: Node, source: &[u8]) -> Result<Vec<Statement>, String> {
+    let mut statements = Vec::new();
+
+    let mut cursor = node.walk();
+
+    for child in node.named_children(&mut cursor) {
+        match child.kind() {
+            "expression_statement" => {
+                if let Some(call) = child.named_child(0) {
+                    if call.kind() == "call_expression" {
+                        if let Some(function) = call.child_by_field_name("function") {
+                            let name = function
+                                .utf8_text(source)
+                                .map_err(|error| error.to_string())?;
+
+                            statements.push(Statement::Call(name.to_string()));
+                        }
+                    }
+                }
+            }
+
+            "return_statement" => {
+                statements.push(Statement::Return);
+            }
+
+            _ => {}
+        }
+    }
+
+    Ok(statements)
+}
+
+fn find_function_name(node: Node, source: &[u8]) -> Option<String> {
     if node.kind() == "identifier" {
         return node.utf8_text(source).ok().map(str::to_owned);
     }
