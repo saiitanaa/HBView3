@@ -4,6 +4,8 @@ Previewer for Nintendo 3DS homebrew development.
 
 HBView3 lets you preview real 3DS homebrew projects on your desktop without rebuilding and launching the project on a 3DS for every UI change.
 
+HBView3 reads real C/C++ source code directly and provides a virtual 3DS environment for previewing supported functionality.
+
 ## Usage
 
 Download the latest release for your platform from the GitHub Releases page.
@@ -42,7 +44,7 @@ For example:
 .\HBView3.exe C:\Projects\MyHomebrew
 ```
 
-## Project requirements
+## Project Requirements
 
 HBView3 works with real C/C++ Nintendo 3DS homebrew projects.
 
@@ -57,7 +59,9 @@ MyHomebrew/
 └── Makefile
 ```
 
-HBView3 reads the C/C++ source directly and previews the supported 3DS functionality without compiling the homebrew.
+HBView3 parses the C/C++ source directly and previews supported 3DS functionality without compiling the homebrew.
+
+The original project can still be built normally with devkitARM and the Nintendo 3DS development tools.
 
 ## Hot Reload
 
@@ -73,24 +77,52 @@ Save the file, and the preview is automatically reloaded.
 
 No rebuild is required.
 
+## Virtual 3DS Screens
+
+HBView3 provides two virtual Nintendo 3DS screens using their native dimensions:
+
+```text
+Top screen:    400 × 240
+Bottom screen: 320 × 240
+```
+
+The screens are displayed together and scaled while preserving their original proportions.
+
 ## Example
 
 [Demo video](https://github.com/user-attachments/assets/b1bacd20-38b5-41bd-b2ed-64d8a84a81dd)
+
+## Architecture
+
+```text
+Real C/C++ source
+        ↓
+    Tree-sitter
+        ↓
+     HBView3 IR
+        ↓
+  Virtual 3DS runtime
+        ↓
+      egui/eframe
+        ↓
+ Desktop preview
+```
+
+The previewer does not compile the homebrew for every change. It parses the source and executes the supported functionality inside the virtual runtime.
 
 ## Status
 
 HBView3 is currently under development.
 
-Supported functionality includes:
+Currently supported functionality includes:
 
 * C/C++ source parsing
 * 3DS project discovery
 * Virtual top and bottom screens
+* Native 3DS screen dimensions
 * Console text rendering
 * `printf`
 * Hot reload
-* SDL3 rendering
+* egui/eframe rendering
 
 More 3DS functionality will be added over time.
-
-
