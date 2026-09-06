@@ -145,28 +145,32 @@ fn main() -> Result<(), String> {
 
         let text_color = Color::RGB(255, 255, 255);
 
-        for (index, text) in runtime.text().iter().enumerate() {
-            let surface = font
-                .render(text)
-                .blended(text_color)
-                .map_err(|e| e.to_string())?;
-
-            let texture_creator = canvas.texture_creator();
-
-            let texture = texture_creator
-                .create_texture_from_surface(&surface)
-                .map_err(|e| e.to_string())?;
-
-            let query = texture.query();
-
-            canvas
-                .copy(
-                    &texture,
-                    None,
-                    Rect::new(10, 10 + (index as i32 * 20), query.width, query.height),
-                )
-                .map_err(|e| e.to_string())?;
+    for (index, text) in runtime.text().iter().enumerate() {
+        if text.is_empty() {
+            continue;
         }
+
+        let surface = font
+            .render(text)
+            .blended(text_color)
+            .map_err(|e| e.to_string())?;
+
+        let texture_creator = canvas.texture_creator();
+
+        let texture = texture_creator
+            .create_texture_from_surface(&surface)
+            .map_err(|e| e.to_string())?;
+
+        let query = texture.query();
+
+        canvas
+            .copy(
+                &texture,
+                None,
+                Rect::new(10, 10 + (index as i32 * 20), query.width, query.height),
+            )
+            .map_err(|e| e.to_string())?;
+    }
 
         canvas.present();
     }
