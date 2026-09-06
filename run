@@ -1,1 +1,0 @@
-install_name_tool -add_rpath "@executable_path" target/debug/HBView3 && ./target/debug/HBView3 /Users/saiitanaa/Desktop/HBView3/homebrew_test
