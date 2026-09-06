@@ -6,6 +6,6 @@ Previewer for 3DS homebrew development
 
 ## Exemple
 
+https://github.com/user-attachments/assets/b1bacd20-38b5-41bd-b2ed-64d8a84a81dd
 
-<video src="https://raw.githubusercontent.com/saiitanaa/HBView3/assets/Exemple-Usage.mp4" controls="controls" muted="muted" class="d-block rounded-bottom-2 border-top width-fit" style="max-height:640px; min-height: 200px">
-</video>
+
