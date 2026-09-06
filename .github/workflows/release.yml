@@ -307,12 +307,13 @@ jobs:
       # ============================================================
       # Upload
       # ============================================================
-
       - name: Upload build
         uses: actions/upload-artifact@v6
         with:
           name: HBView3-${{ matrix.target }}
-          path: dist/*
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
 
   # ================================================================
   # GitHub Release
@@ -337,7 +338,8 @@ jobs:
 
       - name: Show release files
         run: |
-          find dist -maxdepth 2 -type f -print
+          echo "=== Release files ==="
+          find dist -maxdepth 1 -type f -print
 
       - name: Create GitHub Release
         env:
@@ -346,4 +348,14 @@ jobs:
           gh release create "${{ github.ref_name }}" \
             dist/* \
             --title "HBView3 ${{ github.ref_name }}" \
-            --generate-notes
+            --notes "## HBView3 ${{ github.ref_name }}
+
+          ### Downloads
+
+          - **macOS ARM64** — Apple Silicon
+          - **macOS x86_64** — Intel
+          - **Linux ARM64**
+          - **Linux x86_64**
+          - **Windows x86_64**
+
+          The required SDL3 libraries are included in each archive."
