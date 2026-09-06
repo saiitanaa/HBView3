@@ -18,31 +18,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macOS Apple Silicon
           - name: macOS ARM64
             os: macos-15
             target: aarch64-apple-darwin
             archive: tar.gz
 
-          # macOS Intel
           - name: macOS Intel
             os: macos-15-intel
             target: x86_64-apple-darwin
             archive: tar.gz
 
-          # Linux x86_64
           - name: Linux x86_64
             os: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
             archive: tar.gz
 
-          # Linux ARM64
           - name: Linux ARM64
             os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             archive: tar.gz
 
-          # Windows x86_64
           - name: Windows x86_64
             os: windows-2025
             target: x86_64-pc-windows-msvc
@@ -52,7 +47,24 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libpulse-dev \
+            libx11-dev \
+            libxext-dev \
+            libxrandr-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxinerama-dev \
+            libwayland-dev \
+            libxkbcommon-dev \
+            wayland-protocols
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -63,16 +75,30 @@ jobs:
         run: |
           rustc --version
           cargo --version
+          cmake --version
 
       - name: Build
+        if: runner.os != 'Windows'
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Build Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CMAKE_POLICY_VERSION_MINIMUM: "3.5"
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Test
+        if: runner.os != 'Windows'
         run: cargo test --target ${{ matrix.target }}
 
-      # -------------------------
-      # Unix archive
-      # -------------------------
+      - name: Test Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+        run: cargo test --target ${{ matrix.target }}
+
       - name: Package Unix
         if: matrix.archive == 'tar.gz'
         shell: bash
@@ -88,9 +114,6 @@ jobs:
 
           rm "dist/HBView3"
 
-      # -------------------------
-      # Windows archive
-      # -------------------------
       - name: Package Windows
         if: matrix.archive == 'zip'
         shell: pwsh
@@ -108,7 +131,7 @@ jobs:
           Remove-Item "dist/HBView3.exe"
 
       - name: Upload build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: HBView3-${{ matrix.target }}
           path: dist/*
@@ -120,14 +143,14 @@ jobs:
 
     steps:
       - name: Download all builds
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: dist
           merge-multiple: true
 
       - name: Show release files
         run: |
-          find dist -type f -maxdepth 2 -print
+          find dist -maxdepth 2 -type f -print
 
       - name: Create Release
         env:
