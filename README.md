@@ -2,7 +2,7 @@
 Previewer for 3DS homebrew development 
 
 ## Usage
-`hbview3 <path/to/project>`
+Open a terminal and execute : `hbview3 <path/to/project>`
 
 ## Exemple
 
