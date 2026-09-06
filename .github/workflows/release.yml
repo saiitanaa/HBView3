@@ -18,26 +18,31 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macOS Apple Silicon
           - name: macOS ARM64
             os: macos-15
             target: aarch64-apple-darwin
             archive: tar.gz
 
+          # macOS Intel
           - name: macOS Intel
             os: macos-15-intel
             target: x86_64-apple-darwin
             archive: tar.gz
 
+          # Linux x86_64
           - name: Linux x86_64
             os: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
             archive: tar.gz
 
+          # Linux ARM64
           - name: Linux ARM64
             os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             archive: tar.gz
 
+          # Windows x86_64
           - name: Windows x86_64
             os: windows-2025
             target: x86_64-pc-windows-msvc
@@ -175,11 +180,11 @@ jobs:
         run: |
           find dist -maxdepth 2 -type f -print
 
-      - name: Create Release
+      - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ github.ref_name }}" \
             dist/* \
             --title "HBView3 ${{ github.ref_name }}" \
-            --generate-notesgit diff -- .github/workflows/release.yml
+            --generate-notes
