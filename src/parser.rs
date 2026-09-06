@@ -109,7 +109,14 @@ fn parse_statements(node: Node, source: &[u8]) -> Result<Vec<Statement>, String>
                                 .and_then(|text| text.strip_suffix('"'))
                                 .unwrap_or(text);
 
-                            arguments.push(Expression::String(text.to_string()));
+                            let text = text
+                                .replace("\\n", "\n")
+                                .replace("\\t", "\t")
+                                .replace("\\r", "\r")
+                                .replace("\\\"", "\"")
+                                .replace("\\\\", "\\");
+
+                            arguments.push(Expression::String(text));
                         }
                     }
                 }

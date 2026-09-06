@@ -50,7 +50,9 @@ impl Runtime {
 
             "printf" => {
                 if let Some(Expression::String(text)) = arguments.first() {
-                    self.text.push(text.clone());
+                    for line in text.split('\n') {
+                        self.text.push(line.to_string());
+                    }
                 }
             }
 
