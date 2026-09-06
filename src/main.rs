@@ -11,16 +11,19 @@ const TOP_W: f32 = 400.0;
 const TOP_H: f32 = 240.0;
 const BOTTOM_W: f32 = 320.0;
 const BOTTOM_H: f32 = 240.0;
-const GAP: f32 = 20.0;
-const SCALE: f32 = 2.0;
+const GAP: f32 = 8.0;
+const CANVAS_W: f32 = 400.0;
+const CANVAS_H: f32 = TOP_H + GAP + BOTTOM_H;
 
 fn main() -> eframe::Result {
     let project_path = std::env::args()
         .nth(1)
-        .ok_or_else(|| eframe::Error::AppCreation(Box::new(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "Usage: hbview3 <path-to-project>",
-        ))))?;
+        .ok_or_else(|| {
+            eframe::Error::AppCreation(Box::new(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Usage: hbview3 <path-to-project>",
+            )))
+        })?;
 
     let project = Project::load(&project_path)
         .map_err(|error| eframe::Error::AppCreation(Box::new(std::io::Error::other(error))))?;
@@ -70,14 +73,15 @@ fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("HBView3")
-            .with_inner_size([
-                TOP_W * SCALE + 80.0,
-                (TOP_H + GAP + BOTTOM_H) * SCALE + 80.0,
-            ]),
+            .with_inner_size([820.0, 1040.0])
+            .with_min_inner_size([500.0, 620.0]),
         ..Default::default()
     };
 
     eframe::run_ui_native("HBView3", options, move |ui, _frame| {
+        ui.ctx()
+            .request_repaint_after(Duration::from_millis(100));
+
         let mut changed = false;
 
         for (index, source) in project.sources.iter().enumerate() {
@@ -110,16 +114,43 @@ fn main() -> eframe::Result {
             }
         }
 
-        ui.ctx()
-            .request_repaint_after(Duration::from_millis(100));
+        egui::CentralPanel::default()
+            .frame(egui::Frame::NONE)
+            .show_inside(ui, |ui| {
+                let available = ui.available_size();
 
-        egui::CentralPanel::default().show_inside(ui, |ui| {
-            ui.horizontal_centered(|ui| {
-                let screen_area = egui::vec2(TOP_W * SCALE, TOP_H * SCALE);
+                let logical_width = TOP_W;
+                let logical_height = TOP_H + GAP + BOTTOM_H;
 
-                let (top_rect, _) = ui.allocate_exact_size(
-                    screen_area,
-                    egui::Sense::hover(),
+                let scale = (available.x / logical_width)
+                    .min(available.y / logical_height)
+                    .max(1.0);
+
+                let display_width = logical_width * scale;
+                let display_height = logical_height * scale;
+
+                let origin = egui::pos2(
+                    ui.max_rect().center().x - display_width * 0.5,
+                    ui.max_rect().center().y - display_height * 0.5,
+                );
+
+                let top_rect = egui::Rect::from_min_size(
+                    origin,
+                    egui::vec2(
+                        TOP_W * scale,
+                        TOP_H * scale,
+                    ),
+                );
+
+                let bottom_rect = egui::Rect::from_min_size(
+                    egui::pos2(
+                        origin.x + (TOP_W - BOTTOM_W) * scale * 0.5,
+                        origin.y + (TOP_H + GAP) * scale,
+                    ),
+                    egui::vec2(
+                        BOTTOM_W * scale,
+                        BOTTOM_H * scale,
+                    ),
                 );
 
                 let painter = ui.painter();
@@ -130,46 +161,33 @@ fn main() -> eframe::Result {
                     egui::Color32::BLACK,
                 );
 
+                painter.rect_filled(
+                    bottom_rect,
+                    0.0,
+                    egui::Color32::BLACK,
+                );
+
                 for (index, text) in runtime.text().iter().enumerate() {
                     if text.is_empty() {
                         continue;
                     }
 
+                    let logical_position = egui::vec2(
+                        8.0,
+                        8.0 + index as f32 * 16.0,
+                    );
+
                     let position = top_rect.min
-                        + egui::vec2(
-                            10.0,
-                            10.0 + index as f32 * 20.0,
-                        );
+                        + logical_position * scale;
 
                     painter.text(
                         position,
                         egui::Align2::LEFT_TOP,
                         text,
-                        egui::FontId::monospace(16.0),
+                        egui::FontId::monospace(13.0 * scale),
                         egui::Color32::WHITE,
                     );
                 }
             });
-
-            ui.add_space(GAP * SCALE);
-
-            ui.horizontal_centered(|ui| {
-                let screen_area = egui::vec2(
-                    BOTTOM_W * SCALE,
-                    BOTTOM_H * SCALE,
-                );
-
-                let (bottom_rect, _) = ui.allocate_exact_size(
-                    screen_area,
-                    egui::Sense::click_and_drag(),
-                );
-
-                ui.painter().rect_filled(
-                    bottom_rect,
-                    0.0,
-                    egui::Color32::BLACK,
-                );
-            });
-        });
     })
 }
