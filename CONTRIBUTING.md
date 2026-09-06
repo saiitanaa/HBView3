@@ -1,4 +1,4 @@
-# Contributing to ReSharp3DS
+# Contributing to HBView3
 
 ### Reporting Bugs
 * Check the **Issues** tab to see if the bug has already been reported.
@@ -21,9 +21,3 @@
 
 ## Community & Credits
 If your contribution gets merged, you'll be added to the contributors list! 
-
-## Need help?
-
-Join the Discord server below 
-
-https://discord.gg/px7MGB2vhX
