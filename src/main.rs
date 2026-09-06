@@ -3,27 +3,27 @@ mod parser;
 mod project;
 mod runtime;
 
+use eframe::egui;
 use project::Project;
-
-use sdl3::event::Event;
-use sdl3::keyboard::Keycode;
-use sdl3::pixels::Color;
-use sdl3::rect::Rect;
 use std::time::{Duration, SystemTime};
 
-const TOP_W: u32 = 400;
-const TOP_H: u32 = 240;
-const BOTTOM_W: u32 = 320;
-const BOTTOM_H: u32 = 240;
-const GAP: u32 = 20;
-const SCALE: u32 = 2;
+const TOP_W: f32 = 400.0;
+const TOP_H: f32 = 240.0;
+const BOTTOM_W: f32 = 320.0;
+const BOTTOM_H: f32 = 240.0;
+const GAP: f32 = 20.0;
+const SCALE: f32 = 2.0;
 
-fn main() -> Result<(), String> {
+fn main() -> eframe::Result {
     let project_path = std::env::args()
         .nth(1)
-        .ok_or_else(|| "Usage: hbview3 <path-to-project>".to_string())?;
+        .ok_or_else(|| eframe::Error::AppCreation(Box::new(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "Usage: hbview3 <path-to-project>",
+        ))))?;
 
-    let project = Project::load(&project_path)?;
+    let project = Project::load(&project_path)
+        .map_err(|error| eframe::Error::AppCreation(Box::new(std::io::Error::other(error))))?;
 
     println!("================================");
     println!("|           HBView3            |");
@@ -55,7 +55,9 @@ fn main() -> Result<(), String> {
 
         modified_times.push(modified);
 
-        let program = parser::parse_file(source)?;
+        let program = parser::parse_file(source)
+            .map_err(|error| eframe::Error::AppCreation(Box::new(std::io::Error::other(error))))?;
+
         runtime.execute(&program);
     }
 
@@ -65,38 +67,17 @@ fn main() -> Result<(), String> {
 
     println!();
 
-    let sdl = sdl3::init().map_err(|e| e.to_string())?;
-    let ttf = sdl3::ttf::init().map_err(|e| e.to_string())?;
-    let video = sdl.video().map_err(|e| e.to_string())?;
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_title("HBView3")
+            .with_inner_size([
+                TOP_W * SCALE + 80.0,
+                (TOP_H + GAP + BOTTOM_H) * SCALE + 80.0,
+            ]),
+        ..Default::default()
+    };
 
-    let window_width = TOP_W * SCALE;
-    let window_height = (TOP_H + GAP + BOTTOM_H) * SCALE;
-
-    let window = video
-        .window("HBView3", window_width, window_height)
-        .position_centered()
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    let mut canvas = window.into_canvas();
-
-    let font_path = std::path::Path::new("Assets/Arial.ttf");
-
-    let font = ttf.load_font(font_path, 16.0).map_err(|e| e.to_string())?;
-
-    let mut events = sdl.event_pump().map_err(|e| e.to_string())?;
-    'running: loop {
-        for event in events.poll_iter() {
-            match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => break 'running,
-                _ => {}
-            }
-        }
-
+    eframe::run_ui_native("HBView3", options, move |ui, _frame| {
         let mut changed = false;
 
         for (index, source) in project.sources.iter().enumerate() {
@@ -116,8 +97,12 @@ fn main() -> Result<(), String> {
             runtime = runtime::Runtime::new();
 
             for source in &project.sources {
-                let program = parser::parse_file(source)?;
-                runtime.execute(&program);
+                match parser::parse_file(source) {
+                    Ok(program) => runtime.execute(&program),
+                    Err(error) => {
+                        println!("Failed to reload {}: {error}", source.display());
+                    }
+                }
             }
 
             for text in runtime.text() {
@@ -125,55 +110,66 @@ fn main() -> Result<(), String> {
             }
         }
 
-        canvas.set_draw_color(Color::RGB(30, 30, 30));
-        canvas.clear();
+        ui.ctx()
+            .request_repaint_after(Duration::from_millis(100));
 
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
+        egui::CentralPanel::default().show_inside(ui, |ui| {
+            ui.horizontal_centered(|ui| {
+                let screen_area = egui::vec2(TOP_W * SCALE, TOP_H * SCALE);
 
-        canvas
-            .fill_rect(Rect::new(0, 0, TOP_W * SCALE, TOP_H * SCALE))
-            .map_err(|e| e.to_string())?;
+                let (top_rect, _) = ui.allocate_exact_size(
+                    screen_area,
+                    egui::Sense::hover(),
+                );
 
-        canvas
-            .fill_rect(Rect::new(
-                ((TOP_W - BOTTOM_W) * SCALE / 2) as i32,
-                ((TOP_H + GAP) * SCALE) as i32,
-                BOTTOM_W * SCALE,
-                BOTTOM_H * SCALE,
-            ))
-            .map_err(|e| e.to_string())?;
+                let painter = ui.painter();
 
-        let text_color = Color::RGB(255, 255, 255);
+                painter.rect_filled(
+                    top_rect,
+                    0.0,
+                    egui::Color32::BLACK,
+                );
 
-    for (index, text) in runtime.text().iter().enumerate() {
-        if text.is_empty() {
-            continue;
-        }
+                for (index, text) in runtime.text().iter().enumerate() {
+                    if text.is_empty() {
+                        continue;
+                    }
 
-        let surface = font
-            .render(text)
-            .blended(text_color)
-            .map_err(|e| e.to_string())?;
+                    let position = top_rect.min
+                        + egui::vec2(
+                            10.0,
+                            10.0 + index as f32 * 20.0,
+                        );
 
-        let texture_creator = canvas.texture_creator();
+                    painter.text(
+                        position,
+                        egui::Align2::LEFT_TOP,
+                        text,
+                        egui::FontId::monospace(16.0),
+                        egui::Color32::WHITE,
+                    );
+                }
+            });
 
-        let texture = texture_creator
-            .create_texture_from_surface(&surface)
-            .map_err(|e| e.to_string())?;
+            ui.add_space(GAP * SCALE);
 
-        let query = texture.query();
+            ui.horizontal_centered(|ui| {
+                let screen_area = egui::vec2(
+                    BOTTOM_W * SCALE,
+                    BOTTOM_H * SCALE,
+                );
 
-        canvas
-            .copy(
-                &texture,
-                None,
-                Rect::new(10, 10 + (index as i32 * 20), query.width, query.height),
-            )
-            .map_err(|e| e.to_string())?;
-    }
+                let (bottom_rect, _) = ui.allocate_exact_size(
+                    screen_area,
+                    egui::Sense::click_and_drag(),
+                );
 
-        canvas.present();
-    }
-
-    Ok(())
+                ui.painter().rect_filled(
+                    bottom_rect,
+                    0.0,
+                    egui::Color32::BLACK,
+                );
+            });
+        });
+    })
 }
