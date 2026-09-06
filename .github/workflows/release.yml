@@ -159,4 +159,4 @@ jobs:
           gh release create "${{ github.ref_name }}" \
             dist/* \
             --title "HBView3 ${{ github.ref_name }}" \
-            --generate-notes
+            --generate-notesgit diff -- .github/workflows/release.yml
