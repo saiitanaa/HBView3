@@ -9,6 +9,7 @@ use sdl3::event::Event;
 use sdl3::keyboard::Keycode;
 use sdl3::pixels::Color;
 use sdl3::rect::Rect;
+use std::time::{Duration, SystemTime};
 
 const TOP_W: u32 = 400;
 const TOP_H: u32 = 240;
@@ -45,30 +46,17 @@ fn main() -> Result<(), String> {
     println!();
 
     let mut runtime = runtime::Runtime::new();
+    let mut modified_times = Vec::new();
 
     for source in &project.sources {
+        let modified = std::fs::metadata(source)
+            .and_then(|metadata| metadata.modified())
+            .unwrap_or(SystemTime::UNIX_EPOCH);
+
+        modified_times.push(modified);
+
         let program = parser::parse_file(source)?;
-
-        println!("{}", source.display());
-
-        for function in &program.functions {
-            println!("  function: {}", function.name);
-
-            for statement in &function.body {
-                match statement {
-                    ir::Statement::Call(name) => {
-                        println!("    call: {name}");
-                    }
-                    ir::Statement::Return => {
-                        println!("    return");
-                    }
-                }
-            }
-        }
-
         runtime.execute(&program);
-
-        println!();
     }
 
     for source in &project.sources {
@@ -78,6 +66,7 @@ fn main() -> Result<(), String> {
     println!();
 
     let sdl = sdl3::init().map_err(|e| e.to_string())?;
+    let ttf = sdl3::ttf::init().map_err(|e| e.to_string())?;
     let video = sdl.video().map_err(|e| e.to_string())?;
 
     let window_width = TOP_W * SCALE;
@@ -90,8 +79,12 @@ fn main() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     let mut canvas = window.into_canvas();
-    let mut events = sdl.event_pump().map_err(|e| e.to_string())?;
 
+    let font_path = std::path::Path::new("Assets/Arial.ttf");
+
+    let font = ttf.load_font(font_path, 16.0).map_err(|e| e.to_string())?;
+
+    let mut events = sdl.event_pump().map_err(|e| e.to_string())?;
     'running: loop {
         for event in events.poll_iter() {
             match event {
@@ -101,6 +94,34 @@ fn main() -> Result<(), String> {
                     ..
                 } => break 'running,
                 _ => {}
+            }
+        }
+
+        let mut changed = false;
+
+        for (index, source) in project.sources.iter().enumerate() {
+            let modified = std::fs::metadata(source)
+                .and_then(|metadata| metadata.modified())
+                .unwrap_or(SystemTime::UNIX_EPOCH);
+
+            if modified != modified_times[index] {
+                modified_times[index] = modified;
+                changed = true;
+            }
+        }
+
+        if changed {
+            println!("Source changed, reloading...");
+
+            runtime = runtime::Runtime::new();
+
+            for source in &project.sources {
+                let program = parser::parse_file(source)?;
+                runtime.execute(&program);
+            }
+
+            for text in runtime.text() {
+                println!("Reloaded text: {text}");
             }
         }
 
@@ -121,6 +142,31 @@ fn main() -> Result<(), String> {
                 BOTTOM_H * SCALE,
             ))
             .map_err(|e| e.to_string())?;
+
+        let text_color = Color::RGB(255, 255, 255);
+
+        for (index, text) in runtime.text().iter().enumerate() {
+            let surface = font
+                .render(text)
+                .blended(text_color)
+                .map_err(|e| e.to_string())?;
+
+            let texture_creator = canvas.texture_creator();
+
+            let texture = texture_creator
+                .create_texture_from_surface(&surface)
+                .map_err(|e| e.to_string())?;
+
+            let query = texture.query();
+
+            canvas
+                .copy(
+                    &texture,
+                    None,
+                    Rect::new(10, 10 + (index as i32 * 20), query.width, query.height),
+                )
+                .map_err(|e| e.to_string())?;
+        }
 
         canvas.present();
     }

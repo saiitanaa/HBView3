@@ -8,6 +8,15 @@ pub struct Function {
 }
 
 pub enum Statement {
-    Call(String),
+    Call {
+        name: String,
+        arguments: Vec<Expression>,
+    },
     Return,
+}
+
+pub enum Expression {
+    String(String),
+    Integer(i64),
+    Identifier(String),
 }

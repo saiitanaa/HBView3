@@ -1,12 +1,18 @@
-use crate::ir::{Program, Statement};
+use crate::ir::{Expression, Program, Statement};
 
 pub struct Runtime {
     initialized: bool,
+    console_initialized: bool,
+    text: Vec<String>,
 }
 
 impl Runtime {
     pub fn new() -> Self {
-        Self { initialized: false }
+        Self {
+            initialized: false,
+            console_initialized: false,
+            text: Vec::new(),
+        }
     }
 
     pub fn execute(&mut self, program: &Program) {
@@ -15,48 +21,46 @@ impl Runtime {
             .iter()
             .find(|function| function.name == "main")
         else {
-            println!("runtime: main not found");
             return;
         };
 
         for statement in &main.body {
             match statement {
-                Statement::Call(name) => self.call(name.as_str()),
+                Statement::Call { name, arguments } => {
+                    self.call(name, arguments);
+                }
                 Statement::Return => break,
             }
         }
     }
 
-    fn call(&mut self, name: &str) {
+    pub fn text(&self) -> &[String] {
+        &self.text
+    }
+
+    fn call(&mut self, name: &str, arguments: &[Expression]) {
         match name {
-            "gfxInitDefault" => self.gfx_init_default(),
-            "gfxExit" => self.gfx_exit(),
-            "gfxFlushBuffers" => self.gfx_flush_buffers(),
-            "gfxSwapBuffers" => self.gfx_swap_buffers(),
-            "hidScanInput" => self.hid_scan_input(),
+            "gfxInitDefault" => {
+                self.initialized = true;
+            }
+
+            "consoleInit" => {
+                self.console_initialized = true;
+            }
+
+            "printf" => {
+                if let Some(Expression::String(text)) = arguments.first() {
+                    self.text.push(text.clone());
+                }
+            }
+
+            "gfxExit" => {
+                self.initialized = false;
+            }
+
+            "gfxFlushBuffers" | "gfxSwapBuffers" => {}
+
             _ => {}
         }
-    }
-
-    fn gfx_init_default(&mut self) {
-        self.initialized = true;
-        println!("runtime: gfxInitDefault");
-    }
-
-    fn gfx_exit(&mut self) {
-        self.initialized = false;
-        println!("runtime: gfxExit");
-    }
-
-    fn gfx_flush_buffers(&self) {
-        println!("runtime: gfxFlushBuffers");
-    }
-
-    fn gfx_swap_buffers(&self) {
-        println!("runtime: gfxSwapBuffers");
-    }
-
-    fn hid_scan_input(&self) {
-        println!("runtime: hidScanInput");
     }
 }

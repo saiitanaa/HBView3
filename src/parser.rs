@@ -2,7 +2,7 @@ use std::path::Path;
 
 use tree_sitter::{Language, Node, Parser};
 
-use crate::ir::{Function, Program, Statement};
+use crate::ir::{Expression, Function, Program, Statement};
 
 pub fn parse_file(path: &Path) -> Result<Program, String> {
     let source = std::fs::read_to_string(path)
@@ -52,11 +52,9 @@ fn collect_functions(
             .child_by_field_name("body")
             .ok_or_else(|| "Function body not found".to_string())?;
 
-        let statements = parse_statements(body, source)?;
-
         functions.push(Function {
             name,
-            body: statements,
+            body: parse_statements(body, source)?,
         });
 
         return Ok(());
@@ -73,23 +71,50 @@ fn collect_functions(
 
 fn parse_statements(node: Node, source: &[u8]) -> Result<Vec<Statement>, String> {
     let mut statements = Vec::new();
-
     let mut cursor = node.walk();
 
     for child in node.named_children(&mut cursor) {
         match child.kind() {
             "expression_statement" => {
-                if let Some(call) = child.named_child(0) {
-                    if call.kind() == "call_expression" {
-                        if let Some(function) = call.child_by_field_name("function") {
-                            let name = function
+                let Some(call) = child.named_child(0) else {
+                    continue;
+                };
+
+                if call.kind() != "call_expression" {
+                    continue;
+                }
+
+                let Some(function) = call.child_by_field_name("function") else {
+                    continue;
+                };
+
+                let name = function
+                    .utf8_text(source)
+                    .map_err(|error| error.to_string())?
+                    .to_string();
+
+                let mut arguments = Vec::new();
+
+                if let Some(arguments_node) = call.child_by_field_name("arguments") {
+                    let mut arguments_cursor = arguments_node.walk();
+
+                    for argument in arguments_node.named_children(&mut arguments_cursor) {
+                        if argument.kind() == "string_literal" {
+                            let text = argument
                                 .utf8_text(source)
                                 .map_err(|error| error.to_string())?;
 
-                            statements.push(Statement::Call(name.to_string()));
+                            let text = text
+                                .strip_prefix('"')
+                                .and_then(|text| text.strip_suffix('"'))
+                                .unwrap_or(text);
+
+                            arguments.push(Expression::String(text.to_string()));
                         }
                     }
                 }
+
+                statements.push(Statement::Call { name, arguments });
             }
 
             "return_statement" => {
