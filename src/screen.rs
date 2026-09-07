@@ -37,8 +37,30 @@ impl VirtualScreen {
         self.pixels[y * self.width + x] = color;
     }
 
+    pub fn draw_rect(
+        &mut self,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        color: u32,
+    ) {
+        let max_x = (x + width).min(self.width);
+        let max_y = (y + height).min(self.height);
+
+        for py in y..max_y {
+            for px in x..max_x {
+                self.pixels[py * self.width + px] = color;
+            }
+        }
+    }
+
     pub fn clear(&mut self) {
         self.text.clear();
+
+        for pixel in &mut self.pixels {
+            *pixel = 0x000000FF;
+        }
     }
 
     pub fn write_text(&mut self, text: &str) {
@@ -53,24 +75,6 @@ impl VirtualScreen {
                 x: 8.0,
                 y,
             });
-        }
-    }
-
-    pub fn draw(&self, painter: &egui::Painter, rect: egui::Rect, scale: f32) {
-        painter.rect_filled(
-            rect,
-            0.0,
-            egui::Color32::BLACK,
-        );
-
-        for line in &self.text {
-            painter.text(
-                rect.min + egui::vec2(line.x, line.y) * scale,
-                egui::Align2::LEFT_TOP,
-                &line.text,
-                egui::FontId::monospace(13.0 * scale),
-                egui::Color32::WHITE,
-            );
         }
     }
 

@@ -58,6 +58,24 @@ impl Runtime {
         &self.bottom_screen
     }
 
+    pub fn draw_test(&mut self) {
+        self.top_screen.draw_rect(
+            50,
+            50,
+            100,
+            50,
+            0xFF0000FF,
+        );
+
+        self.bottom_screen.draw_rect(
+            20,
+            20,
+            80,
+            40,
+            0x00FF00FF,
+        );
+    }
+
     fn call(&mut self, name: &str, arguments: &[Expression]) {
         match name {
             "gfxInitDefault" => {

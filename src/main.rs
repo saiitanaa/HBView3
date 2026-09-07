@@ -64,7 +64,7 @@ fn main() -> eframe::Result {
 
         runtime.execute(&program);
     }
-
+    runtime.draw_test();
     for source in &project.sources {
         println!("  [C/C++] {}", source.display());
     }
