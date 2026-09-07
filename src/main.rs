@@ -79,6 +79,8 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
 
+    let mut top_texture: Option<egui::TextureHandle> = None;
+    let mut bottom_texture: Option<egui::TextureHandle> = None;
     eframe::run_ui_native("HBView3", options, move |ui, _frame| {
         ui.ctx()
             .request_repaint_after(Duration::from_millis(100));
@@ -157,6 +159,34 @@ fn main() -> eframe::Result {
                     ),
                 );
 
+                let top_image = runtime.top_screen().color_image();
+                let bottom_image = runtime.bottom_screen().color_image();
+
+                match &mut top_texture {
+                    Some(texture) => {
+                        texture.set(top_image, egui::TextureOptions::NEAREST);
+                    }
+                    None => {
+                        top_texture = Some(ui.ctx().load_texture(
+                            "hbview3_top",
+                            top_image,
+                            egui::TextureOptions::NEAREST,
+                        ));
+                    }
+                }
+
+                match &mut bottom_texture {
+                    Some(texture) => {
+                        texture.set(bottom_image, egui::TextureOptions::NEAREST);
+                    }
+                    None => {
+                        bottom_texture = Some(ui.ctx().load_texture(
+                            "hbview3_bottom",
+                            bottom_image,
+                            egui::TextureOptions::NEAREST,
+                        ));
+                    }
+                }
                 let painter = ui.painter();
 
                 painter.rect_filled(
@@ -171,17 +201,49 @@ fn main() -> eframe::Result {
                     egui::Color32::BLACK,
                 );
 
-            runtime.top_screen().draw(
-                painter,
-                top_rect,
-                scale,
-            );
+            if let Some(texture) = &top_texture {
+                painter.image(
+                    texture.id(),
+                    top_rect,
+                    egui::Rect::from_min_max(
+                        egui::pos2(0.0, 0.0),
+                        egui::pos2(1.0, 1.0),
+                    ),
+                    egui::Color32::WHITE,
+                );
+            }
 
-            runtime.bottom_screen().draw(
-                painter,
-                bottom_rect,
-                scale,
-            );
+            if let Some(texture) = &bottom_texture {
+                painter.image(
+                    texture.id(),
+                    bottom_rect,
+                    egui::Rect::from_min_max(
+                        egui::pos2(0.0, 0.0),
+                        egui::pos2(1.0, 1.0),
+                    ),
+                    egui::Color32::WHITE,
+                );
+            }
+
+            for line in &runtime.top_screen().text {
+                painter.text(
+                    top_rect.min + egui::vec2(line.x, line.y) * scale,
+                    egui::Align2::LEFT_TOP,
+                    &line.text,
+                    egui::FontId::monospace(13.0 * scale),
+                    egui::Color32::WHITE,
+                );
+            }
+
+            for line in &runtime.bottom_screen().text {
+                painter.text(
+                    bottom_rect.min + egui::vec2(line.x, line.y) * scale,
+                    egui::Align2::LEFT_TOP,
+                    &line.text,
+                    egui::FontId::monospace(13.0 * scale),
+                    egui::Color32::WHITE,
+                );
+            }
         });
     })
 }
