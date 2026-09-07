@@ -90,7 +90,7 @@ The screens are displayed together and scaled while preserving their original pr
 
 ## Example
 
-[Demo video](https://github.com/user-attachments/assets/b1bacd20-38b5-41bd-b2ed-64d8a84a81dd)
+https://github.com/user-attachments/assets/94784341-2a60-4457-8258-7dbefc3a19e5
 
 ## Architecture
 
