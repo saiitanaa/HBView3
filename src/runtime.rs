@@ -58,24 +58,6 @@ impl Runtime {
         &self.bottom_screen
     }
 
-    pub fn draw_test(&mut self) {
-        self.top_screen.draw_rect(
-            50,
-            50,
-            100,
-            50,
-            0xFF0000FF,
-        );
-
-        self.bottom_screen.draw_rect(
-            20,
-            20,
-            80,
-            40,
-            0x00FF00FF,
-        );
-    }
-
     fn call(&mut self, name: &str, arguments: &[Expression]) {
         match name {
             "gfxInitDefault" => {
@@ -109,6 +91,52 @@ impl Runtime {
 
             "gfxFlushBuffers" | "gfxSwapBuffers" => {}
 
+            "hbvDrawRect" => {
+                if arguments.len() < 4 {
+                    return;
+                }
+
+                let (
+                    Some(Expression::Integer(x)),
+                    Some(Expression::Integer(y)),
+                    Some(Expression::Integer(width)),
+                    Some(Expression::Integer(height)),
+                ) = (
+                    arguments.first(),
+                    arguments.get(1),
+                    arguments.get(2),
+                    arguments.get(3),
+                ) else {
+                    return;
+                };
+
+                let x = (*x).max(0) as usize;
+                let y = (*y).max(0) as usize;
+                let width = (*width).max(0) as usize;
+                let height = (*height).max(0) as usize;
+
+                match self.current_screen {
+                    ScreenTarget::Top => {
+                        self.top_screen.draw_rect(
+                            x,
+                            y,
+                            width,
+                            height,
+                            0xFF0000FF,
+                        );
+                    }
+
+                    ScreenTarget::Bottom => {
+                        self.bottom_screen.draw_rect(
+                            x,
+                            y,
+                            width,
+                            height,
+                            0x00FF00FF,
+                        );
+                    }
+                }
+            }
             _ => {}
         }
     }
