@@ -118,6 +118,14 @@ fn parse_statements(node: Node, source: &[u8]) -> Result<Vec<Statement>, String>
 
                             arguments.push(Expression::String(text));
                         }
+
+                    if argument.kind() == "identifier" {
+                            let text = argument
+                                .utf8_text(source)
+                                .map_err(|error| error.to_string())?;
+
+                            arguments.push(Expression::Identifier(text.to_string()));
+                        }
                     }
                 }
 

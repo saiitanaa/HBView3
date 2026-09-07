@@ -1,9 +1,23 @@
 use crate::ir::{Expression, Program, Statement};
+use crate::screen::{
+    VirtualScreen,
+    TOP_HEIGHT,
+    TOP_WIDTH,
+    BOTTOM_HEIGHT,
+    BOTTOM_WIDTH,
+};
 
 pub struct Runtime {
     initialized: bool,
     console_initialized: bool,
-    text: Vec<String>,
+    current_screen: ScreenTarget,
+    top_screen: VirtualScreen,
+    bottom_screen: VirtualScreen,
+}
+
+enum ScreenTarget {
+    Top,
+    Bottom,
 }
 
 impl Runtime {
@@ -11,7 +25,9 @@ impl Runtime {
         Self {
             initialized: false,
             console_initialized: false,
-            text: Vec::new(),
+            current_screen: ScreenTarget::Top,
+            top_screen: VirtualScreen::new(TOP_WIDTH, TOP_HEIGHT),
+            bottom_screen: VirtualScreen::new(BOTTOM_WIDTH, BOTTOM_HEIGHT),
         }
     }
 
@@ -34,8 +50,12 @@ impl Runtime {
         }
     }
 
-    pub fn text(&self) -> &[String] {
-        &self.text
+    pub fn top_screen(&self) -> &VirtualScreen {
+        &self.top_screen
+    }
+
+    pub fn bottom_screen(&self) -> &VirtualScreen {
+        &self.bottom_screen
     }
 
     fn call(&mut self, name: &str, arguments: &[Expression]) {
@@ -46,18 +66,27 @@ impl Runtime {
 
             "consoleInit" => {
                 self.console_initialized = true;
+
+                if let Some(Expression::Identifier(identifier)) = arguments.first() {
+                    self.current_screen = match identifier.as_str() {
+                        "GFX_BOTTOM" => ScreenTarget::Bottom,
+                        _ => ScreenTarget::Top,
+                    };
+                }
             }
 
             "printf" => {
                 if let Some(Expression::String(text)) = arguments.first() {
-                    for line in text.split('\n') {
-                        self.text.push(line.to_string());
+                    match self.current_screen {
+                        ScreenTarget::Top => self.top_screen.write_text(text),
+                        ScreenTarget::Bottom => self.bottom_screen.write_text(text),
                     }
                 }
             }
 
             "gfxExit" => {
                 self.initialized = false;
+                self.console_initialized = false;
             }
 
             "gfxFlushBuffers" | "gfxSwapBuffers" => {}

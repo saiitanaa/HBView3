@@ -2,6 +2,7 @@ mod ir;
 mod parser;
 mod project;
 mod runtime;
+mod screen;
 
 use eframe::egui;
 use project::Project;
@@ -109,16 +110,19 @@ fn main() -> eframe::Result {
                 }
             }
 
-            for text in runtime.text() {
-                println!("Reloaded text: {text}");
+            for line in &runtime.top_screen().text {
+                println!("Top: {}", line.text);
+            }
+
+            for line in &runtime.bottom_screen().text {
+                println!("Bottom: {}", line.text);
             }
         }
 
         egui::CentralPanel::default()
-            .frame(egui::Frame::NONE)
-            .show_inside(ui, |ui| {
+                .frame(egui::Frame::NONE)
+                .show(ui, |ui| {
                 let available = ui.available_size();
-
                 let logical_width = TOP_W;
                 let logical_height = TOP_H + GAP + BOTTOM_H;
 
@@ -167,27 +171,17 @@ fn main() -> eframe::Result {
                     egui::Color32::BLACK,
                 );
 
-                for (index, text) in runtime.text().iter().enumerate() {
-                    if text.is_empty() {
-                        continue;
-                    }
+            runtime.top_screen().draw(
+                painter,
+                top_rect,
+                scale,
+            );
 
-                    let logical_position = egui::vec2(
-                        8.0,
-                        8.0 + index as f32 * 16.0,
-                    );
-
-                    let position = top_rect.min
-                        + logical_position * scale;
-
-                    painter.text(
-                        position,
-                        egui::Align2::LEFT_TOP,
-                        text,
-                        egui::FontId::monospace(13.0 * scale),
-                        egui::Color32::WHITE,
-                    );
-                }
-            });
+            runtime.bottom_screen().draw(
+                painter,
+                bottom_rect,
+                scale,
+            );
+        });
     })
 }
