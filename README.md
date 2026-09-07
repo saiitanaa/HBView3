@@ -1,12 +1,12 @@
 <img width="28346" height="3402" alt="banner" src="https://github.com/user-attachments/assets/e81fc379-b2f2-4357-a252-9086dc9946ae" />
 
-# Status : v0.0.10-dev 🪛
-
-Previewer for Nintendo 3DS homebrew development.
+## Previewer for Nintendo 3DS homebrew development.
 
 HBView3 lets you preview real 3DS homebrew projects on your desktop without rebuilding and launching the project on a 3DS for every UI change.
 
 HBView3 reads real C/C++ source code directly and provides a virtual 3DS environment for previewing supported functionality.
+
+# Status : v0.0.10-dev 🪛
 
 ## Example
 
