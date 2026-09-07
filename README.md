@@ -1,6 +1,6 @@
 <img width="28346" height="3402" alt="banner" src="https://github.com/user-attachments/assets/e81fc379-b2f2-4357-a252-9086dc9946ae" />
 
-# Status : DevBuild-010 🪛
+# Status : v0.0.10-dev 🪛
 
 Previewer for Nintendo 3DS homebrew development.
 
