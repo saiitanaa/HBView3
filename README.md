@@ -1,3 +1,5 @@
+<img width="120" height="120" alt="Icon-iOS-Default-60x60@2x" src="https://github.com/user-attachments/assets/c568e6b2-07e9-4a50-96cc-dfa47a5012af" /> 
+
 # HBView3
 
 Previewer for Nintendo 3DS homebrew development.
