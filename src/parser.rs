@@ -126,17 +126,21 @@ fn parse_statements(node: Node, source: &[u8]) -> Result<Vec<Statement>, String>
 
                             arguments.push(Expression::Identifier(text.to_string()));
                         }
-                        
+
                     if argument.kind() == "number_literal" {
-                        let text = argument
-                            .utf8_text(source)
-                            .map_err(|error| error.to_string())?;
+                            let text = argument
+                                .utf8_text(source)
+                                .map_err(|error| error.to_string())?;
 
-                        let value = text
-                            .parse::<i64>()
-                            .map_err(|error| error.to_string())?;
+                            let value = if let Some(hex) = text.strip_prefix("0x").or_else(|| text.strip_prefix("0X")) {
+                                i64::from_str_radix(hex, 16)
+                                    .map_err(|error| error.to_string())?
+                            } else {
+                                text.parse::<i64>()
+                                    .map_err(|error| error.to_string())?
+                            };
 
-                        arguments.push(Expression::Integer(value));
+                            arguments.push(Expression::Integer(value));
                         }
                     }
                 }

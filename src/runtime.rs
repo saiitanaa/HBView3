@@ -92,7 +92,7 @@ impl Runtime {
             "gfxFlushBuffers" | "gfxSwapBuffers" => {}
 
             "hbvDrawRect" => {
-                if arguments.len() < 4 {
+                if arguments.len() < 5 {
                     return;
                 }
 
@@ -101,11 +101,13 @@ impl Runtime {
                     Some(Expression::Integer(y)),
                     Some(Expression::Integer(width)),
                     Some(Expression::Integer(height)),
+                    Some(Expression::Integer(color)),
                 ) = (
                     arguments.first(),
                     arguments.get(1),
                     arguments.get(2),
                     arguments.get(3),
+                    arguments.get(4),
                 ) else {
                     return;
                 };
@@ -114,6 +116,7 @@ impl Runtime {
                 let y = (*y).max(0) as usize;
                 let width = (*width).max(0) as usize;
                 let height = (*height).max(0) as usize;
+                let color = *color as u32;
 
                 match self.current_screen {
                     ScreenTarget::Top => {
@@ -122,7 +125,7 @@ impl Runtime {
                             y,
                             width,
                             height,
-                            0xFF0000FF,
+                            color,
                         );
                     }
 
@@ -132,10 +135,21 @@ impl Runtime {
                             y,
                             width,
                             height,
-                            0x00FF00FF,
+                            color,
                         );
                     }
                 }
+            }
+
+            "hbvClear" => {
+                let Some(Expression::Integer(color)) = arguments.first() else {
+                    return;
+                };
+
+                let color = *color as u32;
+
+                self.top_screen.clear_color(color);
+                self.bottom_screen.clear_color(color);
             }
             _ => {}
         }

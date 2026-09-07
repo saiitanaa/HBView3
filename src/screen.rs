@@ -98,4 +98,12 @@ impl VirtualScreen {
             source_size: egui::vec2(self.width as f32, self.height as f32),
         }
     }
+
+    pub fn clear_color(&mut self, color: u32) {
+        for pixel in &mut self.pixels {
+            *pixel = color;
+        }
+
+        self.text.clear();
+    }
 }
