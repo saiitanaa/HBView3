@@ -6,6 +6,10 @@ HBView3 lets you preview real 3DS homebrew projects on your desktop without rebu
 
 HBView3 reads real C/C++ source code directly and provides a virtual 3DS environment for previewing supported functionality.
 
+## Example
+
+https://github.com/user-attachments/assets/94784341-2a60-4457-8258-7dbefc3a19e5
+
 ## Usage
 
 Download the latest release for your platform from the GitHub Releases page.
@@ -87,10 +91,6 @@ Bottom screen: 320 × 240
 ```
 
 The screens are displayed together and scaled while preserving their original proportions.
-
-## Example
-
-https://github.com/user-attachments/assets/94784341-2a60-4457-8258-7dbefc3a19e5
 
 ## Architecture
 
