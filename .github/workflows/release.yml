@@ -1,241 +1,225 @@
 name: HBView3 Release
 
 on:
-push:
-tags:
-- "v*"
+  push:
+    tags:
+      - "v*"
 
 permissions:
-contents: write
+  contents: write
 
 env:
-CARGO_TERM_COLOR: always
+  CARGO_TERM_COLOR: always
 
 jobs:
-macos-arm64:
-name: Build macOS ARM64
-runs-on: macos-15
+  macos-arm64:
+    name: Build macOS ARM64
+    runs-on: macos-15
 
-```
-steps:
-  - name: Checkout
-    uses: actions/checkout@v5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
-  - name: Install Rust
-    uses: dtolnay/rust-toolchain@stable
-    with:
-      target: aarch64-apple-darwin
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
 
-  - name: Build
-    run: cargo build --release --target aarch64-apple-darwin
+      - name: Build
+        run: cargo build --release --target aarch64-apple-darwin
 
-  - name: Upload ARM64 binary
-    uses: actions/upload-artifact@v6
-    with:
-      name: macos-arm64
-      path: target/aarch64-apple-darwin/release/HBView3
-```
+      - name: Upload binary
+        uses: actions/upload-artifact@v6
+        with:
+          name: macos-arm64
+          path: target/aarch64-apple-darwin/release/HBView3
 
-macos-x86_64:
-name: Build macOS Intel
-runs-on: macos-15-intel
+  macos-intel:
+    name: Build macOS Intel
+    runs-on: macos-15-intel
 
-```
-steps:
-  - name: Checkout
-    uses: actions/checkout@v5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
-  - name: Install Rust
-    uses: dtolnay/rust-toolchain@stable
-    with:
-      target: x86_64-apple-darwin
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
 
-  - name: Build
-    run: cargo build --release --target x86_64-apple-darwin
+      - name: Build
+        run: cargo build --release --target x86_64-apple-darwin
 
-  - name: Upload Intel binary
-    uses: actions/upload-artifact@v6
-    with:
-      name: macos-x86_64
-      path: target/x86_64-apple-darwin/release/HBView3
-```
+      - name: Upload binary
+        uses: actions/upload-artifact@v6
+        with:
+          name: macos-intel
+          path: target/x86_64-apple-darwin/release/HBView3
 
-macos-universal:
-name: Package macOS Universal
-needs:
-- macos-arm64
-- macos-x86_64
-runs-on: macos-15
+  macos:
+    name: Package macOS Universal
+    needs:
+      - macos-arm64
+      - macos-intel
+    runs-on: macos-15
 
-```
-steps:
-  - name: Download ARM64 binary
-    uses: actions/download-artifact@v5
-    with:
-      name: macos-arm64
-      path: build/arm64
+    steps:
+      - name: Download ARM64
+        uses: actions/download-artifact@v5
+        with:
+          name: macos-arm64
+          path: arm64
 
-  - name: Download Intel binary
-    uses: actions/download-artifact@v5
-    with:
-      name: macos-x86_64
-      path: build/x86_64
+      - name: Download Intel
+        uses: actions/download-artifact@v5
+        with:
+          name: macos-intel
+          path: intel
 
-  - name: Create Universal binary
-    run: |
-      mkdir -p dist
+      - name: Create Universal binary
+        run: |
+          mkdir -p dist
+          chmod +x arm64/HBView3
+          chmod +x intel/HBView3
 
-      chmod +x build/arm64/HBView3
-      chmod +x build/x86_64/HBView3
+          lipo -create \
+            arm64/HBView3 \
+            intel/HBView3 \
+            -output dist/HBView3
 
-      lipo -create \
-        build/arm64/HBView3 \
-        build/x86_64/HBView3 \
-        -output dist/HBView3
+          chmod +x dist/HBView3
+          lipo -info dist/HBView3
 
-      chmod +x dist/HBView3
+      - name: Create archive
+        run: |
+          tar -czf \
+            HBView3-${{ github.ref_name }}-macos.tar.gz \
+            -C dist \
+            HBView3
 
-      file dist/HBView3
-      lipo -info dist/HBView3
+      - name: Upload release
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-macos
+          path: HBView3-${{ github.ref_name }}-macos.tar.gz
 
-  - name: Package macOS
-    run: |
-      tar -czf \
-        "HBView3-${{ github.ref_name }}-macos.tar.gz" \
-        -C dist \
-        HBView3
+  linux:
+    name: Build Linux x86_64
+    runs-on: ubuntu-24.04
 
-  - name: Upload macOS release
-    uses: actions/upload-artifact@v6
-    with:
-      name: release-macos
-      path: HBView3-${{ github.ref_name }}-macos.tar.gz
-```
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
-linux:
-name: Build Linux x86_64
-runs-on: ubuntu-24.04
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev
 
-```
-steps:
-  - name: Checkout
-    uses: actions/checkout@v5
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
 
-  - name: Install Linux dependencies
-    run: |
-      sudo apt-get update
-      sudo apt-get install -y \
-        libxcb-render0-dev \
-        libxcb-shape0-dev \
-        libxcb-xfixes0-dev \
-        libxkbcommon-dev
+      - name: Build
+        run: cargo build --release --target x86_64-unknown-linux-gnu
 
-  - name: Install Rust
-    uses: dtolnay/rust-toolchain@stable
-    with:
-      target: x86_64-unknown-linux-gnu
+      - name: Create archive
+        run: |
+          mkdir -p dist
 
-  - name: Build
-    run: cargo build --release --target x86_64-unknown-linux-gnu
+          cp \
+            target/x86_64-unknown-linux-gnu/release/HBView3 \
+            dist/HBView3
 
-  - name: Package Linux
-    run: |
-      mkdir -p dist
+          chmod +x dist/HBView3
 
-      cp \
-        target/x86_64-unknown-linux-gnu/release/HBView3 \
-        dist/HBView3
+          tar -czf \
+            HBView3-${{ github.ref_name }}-linux.tar.gz \
+            -C dist \
+            HBView3
 
-      chmod +x dist/HBView3
+      - name: Upload release
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-linux
+          path: HBView3-${{ github.ref_name }}-linux.tar.gz
 
-      tar -czf \
-        "HBView3-${{ github.ref_name }}-linux.tar.gz" \
-        -C dist \
-        HBView3
+  windows:
+    name: Build Windows x86_64
+    runs-on: windows-2025
 
-  - name: Upload Linux release
-    uses: actions/upload-artifact@v6
-    with:
-      name: release-linux
-      path: HBView3-${{ github.ref_name }}-linux.tar.gz
-```
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
-windows:
-name: Build Windows x86_64
-runs-on: windows-2025
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
 
-```
-steps:
-  - name: Checkout
-    uses: actions/checkout@v5
+      - name: Build
+        run: cargo build --release --target x86_64-pc-windows-msvc
 
-  - name: Install Rust
-    uses: dtolnay/rust-toolchain@stable
-    with:
-      target: x86_64-pc-windows-msvc
+      - name: Create archive
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
 
-  - name: Build
-    run: cargo build --release --target x86_64-pc-windows-msvc
+          Copy-Item `
+            "target/x86_64-pc-windows-msvc/release/HBView3.exe" `
+            "dist/HBView3.exe"
 
-  - name: Package Windows
-    shell: pwsh
-    run: |
-      New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive `
+            -Path "dist/HBView3.exe" `
+            -DestinationPath "HBView3-${{ github.ref_name }}-windows.zip"
 
-      Copy-Item `
-        "target/x86_64-pc-windows-msvc/release/HBView3.exe" `
-        "dist/HBView3.exe"
+      - name: Upload release
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-windows
+          path: HBView3-${{ github.ref_name }}-windows.zip
 
-      Compress-Archive `
-        -Path "dist/HBView3.exe" `
-        -DestinationPath "HBView3-${{ github.ref_name }}-windows.zip"
+  release:
+    name: Create GitHub Release
+    needs:
+      - macos
+      - linux
+      - windows
+    runs-on: ubuntu-24.04
 
-  - name: Upload Windows release
-    uses: actions/upload-artifact@v6
-    with:
-      name: release-windows
-      path: HBView3-${{ github.ref_name }}-windows.zip
-```
+    steps:
+      - name: Download macOS
+        uses: actions/download-artifact@v5
+        with:
+          name: release-macos
+          path: dist
 
-release:
-name: Create GitHub Release
-needs:
-- macos-universal
-- linux
-- windows
-runs-on: ubuntu-24.04
+      - name: Download Linux
+        uses: actions/download-artifact@v5
+        with:
+          name: release-linux
+          path: dist
 
-```
-steps:
-  - name: Download macOS release
-    uses: actions/download-artifact@v5
-    with:
-      name: release-macos
-      path: dist
+      - name: Download Windows
+        uses: actions/download-artifact@v5
+        with:
+          name: release-windows
+          path: dist
 
-  - name: Download Linux release
-    uses: actions/download-artifact@v5
-    with:
-      name: release-linux
-      path: dist
+      - name: Show release files
+        run: |
+          find dist -maxdepth 1 -type f -print
 
-  - name: Download Windows release
-    uses: actions/download-artifact@v5
-    with:
-      name: release-windows
-      path: dist
-
-  - name: Show release files
-    run: |
-      find dist -type f -maxdepth 1 -print
-
-  - name: Create GitHub Release
-    env:
-      GH_TOKEN: ${{ github.token }}
-    run: |
-      gh release create "${{ github.ref_name }}" \
-        dist/* \
-        --title "HBView3 ${{ github.ref_name }}" \
-        --generate-notes
-```
-
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name}" \
+            dist/* \
+            --title "HBView3 ${{ github.ref_name }}" \
+            --generate-notes
