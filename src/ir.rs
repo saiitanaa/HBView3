@@ -12,6 +12,10 @@ pub enum Statement {
         name: String,
         arguments: Vec<Expression>,
     },
+    Variable {
+        name: String,
+        value: Expression,
+    },
     Return,
 }
 

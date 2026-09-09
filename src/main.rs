@@ -1,3 +1,4 @@
+mod input;
 mod ir;
 mod parser;
 mod project;

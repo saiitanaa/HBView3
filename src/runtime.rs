@@ -1,3 +1,4 @@
+use crate::input::InputState;
 use crate::ir::{Expression, Program, Statement};
 use crate::screen::{
     VirtualScreen,
@@ -13,6 +14,7 @@ pub struct Runtime {
     current_screen: ScreenTarget,
     top_screen: VirtualScreen,
     bottom_screen: VirtualScreen,
+    input: InputState,
 }
 
 enum ScreenTarget {
@@ -26,8 +28,15 @@ impl Runtime {
             initialized: false,
             console_initialized: false,
             current_screen: ScreenTarget::Top,
-            top_screen: VirtualScreen::new(TOP_WIDTH, TOP_HEIGHT),
-            bottom_screen: VirtualScreen::new(BOTTOM_WIDTH, BOTTOM_HEIGHT),
+            top_screen: VirtualScreen::new(
+                TOP_WIDTH,
+                TOP_HEIGHT,
+            ),
+            bottom_screen: VirtualScreen::new(
+                BOTTOM_WIDTH,
+                BOTTOM_HEIGHT,
+            ),
+            input: InputState::new(),
         }
     }
 
@@ -42,10 +51,20 @@ impl Runtime {
 
         for statement in &main.body {
             match statement {
-                Statement::Call { name, arguments } => {
+                Statement::Call {
+                    name,
+                    arguments,
+                } => {
                     self.call(name, arguments);
                 }
-                Statement::Return => break,
+
+                Statement::Variable { name, .. } => {
+                    println!("Variable: {name}");
+                }
+
+                Statement::Return => {
+                    break;
+                }
             }
         }
     }
@@ -58,7 +77,31 @@ impl Runtime {
         &self.bottom_screen
     }
 
-    fn call(&mut self, name: &str, arguments: &[Expression]) {
+    pub fn begin_frame(&mut self) {
+        self.input.begin_frame();
+    }
+
+    pub fn press_key(&mut self, key: u32) {
+        self.input.press(key);
+    }
+
+    pub fn release_key(&mut self, key: u32) {
+        self.input.release(key);
+    }
+
+    pub fn keys_down(&self) -> u32 {
+        self.input.keys_down()
+    }
+
+    pub fn keys_held(&self) -> u32 {
+        self.input.keys_held()
+    }
+
+    fn call(
+        &mut self,
+        name: &str,
+        arguments: &[Expression],
+    ) {
         match name {
             "gfxInitDefault" => {
                 self.initialized = true;
@@ -67,19 +110,29 @@ impl Runtime {
             "consoleInit" => {
                 self.console_initialized = true;
 
-                if let Some(Expression::Identifier(identifier)) = arguments.first() {
-                    self.current_screen = match identifier.as_str() {
-                        "GFX_BOTTOM" => ScreenTarget::Bottom,
-                        _ => ScreenTarget::Top,
-                    };
+                if let Some(Expression::Identifier(identifier)) =
+                    arguments.first()
+                {
+                    self.current_screen =
+                        match identifier.as_str() {
+                            "GFX_BOTTOM" => ScreenTarget::Bottom,
+                            _ => ScreenTarget::Top,
+                        };
                 }
             }
 
             "printf" => {
-                if let Some(Expression::String(text)) = arguments.first() {
+                if let Some(Expression::String(text)) =
+                    arguments.first()
+                {
                     match self.current_screen {
-                        ScreenTarget::Top => self.top_screen.write_text(text),
-                        ScreenTarget::Bottom => self.bottom_screen.write_text(text),
+                        ScreenTarget::Top => {
+                            self.top_screen.write_text(text);
+                        }
+
+                        ScreenTarget::Bottom => {
+                            self.bottom_screen.write_text(text);
+                        }
                     }
                 }
             }
@@ -92,7 +145,9 @@ impl Runtime {
             "gfxFlushBuffers" | "gfxSwapBuffers" => {}
 
             "hbvClear" => {
-                let Some(Expression::Integer(color)) = arguments.first() else {
+                let Some(Expression::Integer(color)) =
+                    arguments.first()
+                else {
                     return;
                 };
 
@@ -122,7 +177,8 @@ impl Runtime {
                     arguments.first(),
                     arguments.get(1),
                     arguments.get(2),
-                ) else {
+                )
+                else {
                     return;
                 };
 
@@ -132,11 +188,19 @@ impl Runtime {
 
                 match self.current_screen {
                     ScreenTarget::Top => {
-                        self.top_screen.set_pixel(x, y, color);
+                        self.top_screen.set_pixel(
+                            x,
+                            y,
+                            color,
+                        );
                     }
 
                     ScreenTarget::Bottom => {
-                        self.bottom_screen.set_pixel(x, y, color);
+                        self.bottom_screen.set_pixel(
+                            x,
+                            y,
+                            color,
+                        );
                     }
                 }
             }
@@ -158,7 +222,8 @@ impl Runtime {
                     arguments.get(2),
                     arguments.get(3),
                     arguments.get(4),
-                ) else {
+                )
+                else {
                     return;
                 };
 
@@ -190,6 +255,19 @@ impl Runtime {
                     }
                 }
             }
+
+            "hidScanInput" => {
+                self.input.begin_frame();
+            }
+
+            "hidKeysDown" => {
+                let _ = self.input.keys_down();
+            }
+
+            "hidKeysHeld" => {
+                let _ = self.input.keys_held();
+            }
+
             _ => {}
         }
     }
