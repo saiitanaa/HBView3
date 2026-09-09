@@ -6,7 +6,7 @@
 
 ### Suggesting Enhancements
 * Open an issue with the tag `enhancement`.
-* Explain clearly what the feature is and why it would be useful for ReSharp3DS.
+* Explain clearly what the feature is and why it would be useful for HBView3.
 
 ### Code Contributions
 1. **Fork** the repository.
