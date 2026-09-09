@@ -15,6 +15,7 @@ pub struct Runtime {
     top_screen: VirtualScreen,
     bottom_screen: VirtualScreen,
     input: InputState,
+    variables: std::collections::HashMap<String, i64>,
 }
 
 enum ScreenTarget {
@@ -37,6 +38,7 @@ impl Runtime {
                 BOTTOM_HEIGHT,
             ),
             input: InputState::new(),
+            variables: std::collections::HashMap::new(),
         }
     }
 
@@ -58,8 +60,10 @@ impl Runtime {
                     self.call(name, arguments);
                 }
 
-                Statement::Variable { name, .. } => {
-                    println!("Variable: {name}");
+                Statement::Variable { name, value } => {
+                    if let Expression::Integer(value) = value {
+                        self.variables.insert(name.clone(), *value);
+                    }
                 }
 
                 Statement::Return => {
@@ -95,6 +99,10 @@ impl Runtime {
 
     pub fn keys_held(&self) -> u32 {
         self.input.keys_held()
+    }
+
+    pub fn variable(&self, name: &str) -> Option<i64> {
+        self.variables.get(name).copied()
     }
 
     fn call(
