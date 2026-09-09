@@ -100,10 +100,10 @@ impl VirtualScreen {
     }
 
     pub fn clear_color(&mut self, color: u32) {
+        self.text.clear();
+
         for pixel in &mut self.pixels {
             *pixel = color;
         }
-
-        self.text.clear();
     }
 }

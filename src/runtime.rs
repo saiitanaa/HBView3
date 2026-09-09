@@ -91,6 +91,56 @@ impl Runtime {
 
             "gfxFlushBuffers" | "gfxSwapBuffers" => {}
 
+            "hbvClear" => {
+                let Some(Expression::Integer(color)) = arguments.first() else {
+                    return;
+                };
+
+                let color = *color as u32;
+
+                match self.current_screen {
+                    ScreenTarget::Top => {
+                        self.top_screen.clear_color(color);
+                    }
+
+                    ScreenTarget::Bottom => {
+                        self.bottom_screen.clear_color(color);
+                    }
+                }
+            }
+
+            "hbvDrawPixel" => {
+                if arguments.len() < 3 {
+                    return;
+                }
+
+                let (
+                    Some(Expression::Integer(x)),
+                    Some(Expression::Integer(y)),
+                    Some(Expression::Integer(color)),
+                ) = (
+                    arguments.first(),
+                    arguments.get(1),
+                    arguments.get(2),
+                ) else {
+                    return;
+                };
+
+                let x = (*x).max(0) as usize;
+                let y = (*y).max(0) as usize;
+                let color = *color as u32;
+
+                match self.current_screen {
+                    ScreenTarget::Top => {
+                        self.top_screen.set_pixel(x, y, color);
+                    }
+
+                    ScreenTarget::Bottom => {
+                        self.bottom_screen.set_pixel(x, y, color);
+                    }
+                }
+            }
+
             "hbvDrawRect" => {
                 if arguments.len() < 5 {
                     return;
@@ -139,17 +189,6 @@ impl Runtime {
                         );
                     }
                 }
-            }
-
-            "hbvClear" => {
-                let Some(Expression::Integer(color)) = arguments.first() else {
-                    return;
-                };
-
-                let color = *color as u32;
-
-                self.top_screen.clear_color(color);
-                self.bottom_screen.clear_color(color);
             }
             _ => {}
         }
