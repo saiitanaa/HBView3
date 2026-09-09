@@ -27,7 +27,7 @@ chmod +x HBView3
 Run it with the path to your 3DS homebrew project:
 
 ```bash
-./HBView3 /path/to/project
+Linux : ./HBView3 /path/to/project macOS : /path/to/HBView3 /path/to/project 
 ```
 
 For example:
