@@ -6,7 +6,7 @@ HBView3 lets you preview real 3DS homebrew projects on your desktop without rebu
 
 HBView3 reads real C/C++ source code directly and provides a virtual 3DS environment for previewing supported functionality.
 
-# Status : v0.0.10-dev 🪛
+# Status : v0.0.12-dev 🪛
 
 ## Example
 
