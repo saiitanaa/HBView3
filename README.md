@@ -1,6 +1,6 @@
 <img width="28346" height="3402" alt="banner" src="https://github.com/user-attachments/assets/e81fc379-b2f2-4357-a252-9086dc9946ae" />
 
-## VS Code / VSCodium extension for previewing Nintendo 3DS homebrew projects
+## VS Code / VSCodium extension for previewing Nintendo 3DS homebrew projects ( CURRENTLY IN DEVELOPMENT ) 
 
 HBView3 lets you preview real 3DS homebrew projects directly inside your editor, without rebuilding and launching the project on a 3DS (or in an emulator) for every UI change.
 
