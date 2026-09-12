@@ -1,0 +1,22 @@
+# Rust
+target/
+
+# Node / TypeScript
+node_modules/
+dist/
+build/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Homebrew test
+main.cpp
