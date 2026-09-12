@@ -1,52 +1,42 @@
 <img width="28346" height="3402" alt="banner" src="https://github.com/user-attachments/assets/e81fc379-b2f2-4357-a252-9086dc9946ae" />
 
-## Previewer for Nintendo 3DS homebrew development.
+## VS Code / VSCodium extension for previewing Nintendo 3DS homebrew projects
 
-HBView3 lets you preview real 3DS homebrew projects on your desktop without rebuilding and launching the project on a 3DS for every UI change.
+HBView3 lets you preview real 3DS homebrew projects directly inside your editor, without rebuilding and launching the project on a 3DS (or in an emulator) for every UI change.
 
-HBView3 reads real C/C++ source code directly and provides a virtual 3DS environment for previewing supported functionality.
+HBView3 reads real C/C++ source code directly and provides a virtual 3DS environment for previewing supported functionality, right next to your code.
 
-## Example
+## Installation
 
-https://github.com/user-attachments/assets/94784341-2a60-4457-8258-7dbefc3a19e5
+HBView3 is distributed as an extension for both **VS Code** and **VSCodium**.
+
+### VS Code
+
+Install it from the [Visual Studio Code Marketplace](#), or from the Extensions panel by searching for `HBView3`.
+
+### VSCodium
+
+VSCodium uses [Open VSX](https://open-vsx.org/) instead of the Microsoft Marketplace. Install it from Open VSX, or from the Extensions panel by searching for `HBView3`.
+
+### Manual install (.vsix)
+
+You can also grab the latest `.vsix` from the [GitHub Releases](../../releases) page and install it manually:
+
+```bash
+code --install-extension hbview3-x.y.z.vsix
+```
+
+```bash
+codium --install-extension hbview3-x.y.z.vsix
+```
 
 ## Usage
 
-Download the latest release for your platform from the GitHub Releases page.
+1. Open your 3DS homebrew project folder in VS Code / VSCodium.
+2. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and run **HBView3: Preview Project**.
+3. The virtual 3DS preview opens in a side panel and stays in sync with your source files.
 
-### macOS / Linux
-
-Extract the archive, then make the binary executable:
-
-```bash
-chmod +x HBView3
-```
-
-Run it with the path to your 3DS homebrew project:
-
-```bash
-Linux : ./HBView3 /path/to/project macOS : /path/to/HBView3 /path/to/project 
-```
-
-For example:
-
-```bash
-./HBView3 ~/Projects/MyHomebrew
-```
-
-### Windows
-
-Extract the ZIP archive and open PowerShell in the extracted directory:
-
-```powershell
-.\HBView3.exe C:\path\to\project
-```
-
-For example:
-
-```powershell
-.\HBView3.exe C:\Projects\MyHomebrew
-```
+For example, opening a project at `~/Projects/MyHomebrew` and running the command will detect `main.c`, `source/`, `include/`, and the `Makefile`, then start the preview.
 
 ## Project Requirements
 
@@ -103,26 +93,12 @@ Real C/C++ source
         ↓
   Virtual 3DS runtime
         ↓
-      egui/eframe
+   Extension webview
         ↓
- Desktop preview
+   Editor preview
 ```
 
-The previewer does not compile the homebrew for every change. It parses the source and executes the supported functionality inside the virtual runtime.
-
-## Status
-
-HBView3 is currently under development.
-
-Currently supported functionality includes:
-
-* C/C++ source parsing
-* 3DS project discovery
-* Virtual top and bottom screens
-* Native 3DS screen dimensions
-* Console text rendering
-* `printf`
-* Hot reload
-* egui/eframe rendering
+The previewer does not compile the homebrew for every change. It parses the source and executes the supported functionality inside the virtual runtime, rendered in the editor's webview.
+* Webview-based rendering
 
 More 3DS functionality will be added over time.
