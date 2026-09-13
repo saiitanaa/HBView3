@@ -177,6 +177,10 @@ fn parse_expression(
             Ok(Expression::Identifier(text.to_string()))
         }
 
+        "null" => {
+            Ok(Expression::Identifier("nullptr".to_string()))
+        }
+
         "string_literal" => {
             let text = node
                 .utf8_text(source)

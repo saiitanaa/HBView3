@@ -1,5 +1,7 @@
 mod ir;
 mod parser;
+mod runtime;
+mod screen;
 use tower_lsp::{
     lsp_types::*,
     Client,
@@ -12,7 +14,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct PreviewParams {
-    text: String,
+    top_text: Vec<String>,
+    bottom_text: Vec<String>,
 }
 
 enum PreviewNotification {}
@@ -61,24 +64,122 @@ impl LanguageServer for Backend {
         self.client
             .log_message(
                 MessageType::INFO,
-                format!("HBView3 opened: {}", params.text_document.uri),
+                format!(
+                    "HBView3 opened: {}",
+                    params.text_document.uri
+                ),
             )
             .await;
 
-        self.client
-            .log_message(
-                MessageType::INFO,
-                format!("HBView3 received {} bytes", text.len()),
-            )
-            .await;
+        let path = match params.text_document.uri.to_file_path() {
+            Ok(path) => path,
+            Err(error) => {
+                self.client
+                    .log_message(
+                        MessageType::ERROR,
+                        format!("Failed to convert document URI: {error:?}"),
+                    )
+                    .await;
+
+                return;
+            }
+        };
+
+        let program = match parser::parse_source(&path, &text) {
+            Ok(program) => program,
+            Err(error) => {
+                self.client
+                    .log_message(
+                        MessageType::ERROR,
+                        format!("Failed to parse {}: {error}", path.display()),
+                    )
+                    .await;
+
+                return;
+            }
+        };
+
+        let mut runtime = runtime::Runtime::new();
+        runtime.execute(&program);
+
+        let top_text = runtime
+            .top_screen()
+            .text
+            .iter()
+            .map(|line| line.text.clone())
+            .collect();
+
+        let bottom_text = runtime
+            .bottom_screen()
+            .text
+            .iter()
+            .map(|line| line.text.clone())
+            .collect();
 
         self.client
             .send_notification::<PreviewNotification>(
                 PreviewParams {
-                    text,
+                    top_text,
+                    bottom_text,
                 },
             )
             .await;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{parser, runtime};
+    use std::path::Path;
+
+    #[test]
+    fn parses_main() {
+        let source = r#"
+#include <3ds.h>
+#include <stdio.h>
+
+int main() {
+    gfxInitDefault();
+    consoleInit(GFX_TOP, nullptr);
+    printf("Hello 3DS!");
+    return 0;
+}
+"#;
+
+        let program =
+            parser::parse_source(Path::new("main.cpp"), source)
+                .expect("Failed to parse");
+
+        assert_eq!(program.functions.len(), 1);
+        assert_eq!(program.functions[0].name, "main");
+    }
+
+    #[test]
+    fn executes_main() {
+        let source = r#"
+#include <3ds.h>
+#include <stdio.h>
+
+int main() {
+    gfxInitDefault();
+    consoleInit(GFX_TOP, nullptr);
+    printf("Hello 3DS!");
+    return 0;
+}
+"#;
+
+        let program =
+            parser::parse_source(Path::new("main.cpp"), source)
+                .expect("Failed to parse");
+
+        let mut runtime = runtime::Runtime::new();
+
+        runtime.execute(&program);
+
+        assert_eq!(
+            runtime.top_screen().text[0].text,
+            "Hello 3DS!"
+        );
     }
 }
 

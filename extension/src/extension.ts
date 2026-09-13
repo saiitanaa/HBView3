@@ -8,6 +8,13 @@ import {
 
 let previewPanel: vscode.WebviewPanel | undefined;
 
+let latestPreview:
+    | {
+          topText: string[];
+          bottomText: string[];
+      }
+    | undefined;
+
 export function activate(context: vscode.ExtensionContext) {
     const serverPath = path.join(
         context.extensionPath,
@@ -43,12 +50,21 @@ export function activate(context: vscode.ExtensionContext) {
 
     client.onNotification(
         "hbview3/preview",
-        (params: { text: string }) => {
-            console.log("HBView3 received source:", params.text);
+        (params: {
+            top_text: string[];
+            bottom_text: string[];
+        }) => {
+            latestPreview = {
+                topText: params.top_text,
+                bottomText: params.bottom_text,
+            };
+
+            console.log("HBView3 preview:", latestPreview);
 
             previewPanel?.webview.postMessage({
-                type: "source",
-                text: params.text,
+                type: "preview",
+                topText: params.top_text,
+                bottomText: params.bottom_text,
             });
         },
     );
@@ -78,6 +94,8 @@ export function activate(context: vscode.ExtensionContext) {
             const file = files[0];
             const document = await vscode.workspace.openTextDocument(file);
 
+            previewPanel?.dispose();
+
             previewPanel = vscode.window.createWebviewPanel(
                 "hbview3Preview",
                 "HBView3",
@@ -95,9 +113,14 @@ export function activate(context: vscode.ExtensionContext) {
 
                     console.log("HBView3 Webview ready");
 
+                    if (!latestPreview) {
+                        return;
+                    }
+
                     previewPanel?.webview.postMessage({
-                        type: "source",
-                        text: document.getText(),
+                        type: "preview",
+                        topText: latestPreview.topText,
+                        bottomText: latestPreview.bottomText,
                     });
                 },
                 undefined,
@@ -202,23 +225,34 @@ function getPreviewHtml(filePath: string): string {
         window.addEventListener("message", (event) => {
             const message = event.data;
 
-            if (message.type !== "source") {
+            if (message.type !== "preview") {
                 return;
             }
 
             topContext.fillStyle = "red";
             topContext.fillRect(0, 0, 400, 240);
 
+            bottomContext.fillStyle = "blue";
+            bottomContext.fillRect(0, 0, 320, 240);
+
             topContext.fillStyle = "white";
             topContext.font = "10px monospace";
 
-            const lines = message.text.split("\\n");
-
-            lines.slice(0, 22).forEach((line, index) => {
+            message.topText.forEach((line, index) => {
                 topContext.fillText(
-                    line.slice(0, 62),
-                    4,
-                    12 + index * 10,
+                    line,
+                    8,
+                    16 + index * 16,
+                );
+            });
+
+            bottomContext.fillStyle = "white";
+
+            message.bottomText.forEach((line, index) => {
+                bottomContext.fillText(
+                    line,
+                    8,
+                    16 + index * 16,
                 );
             });
         });
