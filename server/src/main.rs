@@ -125,6 +125,96 @@ impl LanguageServer for Backend {
             )
             .await;
     }
+
+    async fn did_change(
+        &self,
+        params: DidChangeTextDocumentParams,
+    ) {
+        self.client
+            .log_message(
+                MessageType::INFO,
+                format!(
+                    "HBView3 did_change: {}",
+                    params.text_document.uri
+                ),
+            )
+            .await;
+
+        self.client
+            .log_message(
+                MessageType::INFO,
+                format!(
+                    "Changes received: {}",
+                    params.content_changes.len()
+                ),
+            )
+            .await;
+
+        let Some(change) = params.content_changes.first() else {
+            return;
+        };
+
+        self.client
+            .log_message(
+                MessageType::INFO,
+                format!("New source: {}", change.text),
+            )
+            .await;
+
+        let path = match params.text_document.uri.to_file_path() {
+            Ok(path) => path,
+            Err(error) => {
+                self.client
+                    .log_message(
+                        MessageType::ERROR,
+                        format!("Failed to convert document URI: {error:?}"),
+                    )
+                    .await;
+
+                return;
+            }
+        };
+
+        let program = match parser::parse_source(&path, &change.text) {
+            Ok(program) => program,
+            Err(error) => {
+                self.client
+                    .log_message(
+                        MessageType::ERROR,
+                        format!("Failed to parse {}: {error}", path.display()),
+                    )
+                    .await;
+
+                return;
+            }
+        };
+
+        let mut runtime = runtime::Runtime::new();
+        runtime.execute(&program);
+
+        let top_text = runtime
+            .top_screen()
+            .text
+            .iter()
+            .map(|line| line.text.clone())
+            .collect();
+
+        let bottom_text = runtime
+            .bottom_screen()
+            .text
+            .iter()
+            .map(|line| line.text.clone())
+            .collect();
+
+        self.client
+            .send_notification::<PreviewNotification>(
+                PreviewParams {
+                    top_text,
+                    bottom_text,
+                },
+            )
+            .await;
+    }
 }
 
 #[cfg(test)]
