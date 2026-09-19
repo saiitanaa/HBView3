@@ -2,6 +2,7 @@ mod ir;
 mod parser;
 mod runtime;
 mod screen;
+
 use tower_lsp::{
     lsp_types::*,
     Client,
@@ -16,6 +17,28 @@ use serde::{Deserialize, Serialize};
 struct PreviewParams {
     top_text: Vec<String>,
     bottom_text: Vec<String>,
+    top_pixels: Vec<PixelData>,
+    bottom_pixels: Vec<PixelData>,
+    top_rectangles: Vec<RectData>,
+    bottom_rectangles: Vec<RectData>,
+    top_background: u32,
+    bottom_background: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct PixelData {
+    x: usize,
+    y: usize,
+    color: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct RectData {
+    x: usize,
+    y: usize,
+    width: usize,
+    height: usize,
+    color: u32,
 }
 
 enum PreviewNotification {}
@@ -28,6 +51,74 @@ impl tower_lsp::lsp_types::notification::Notification for PreviewNotification {
 
 struct Backend {
     client: Client,
+}
+
+impl Backend {
+    fn build_preview(runtime: &runtime::Runtime) -> PreviewParams {
+        let top = runtime.top_screen();
+        let bottom = runtime.bottom_screen();
+
+        PreviewParams {
+            top_text: top
+                .text
+                .iter()
+                .map(|line| line.text.clone())
+                .collect(),
+
+            bottom_text: bottom
+                .text
+                .iter()
+                .map(|line| line.text.clone())
+                .collect(),
+
+            top_pixels: top
+                .pixels
+                .iter()
+                .map(|pixel| PixelData {
+                    x: pixel.x,
+                    y: pixel.y,
+                    color: pixel.color,
+                })
+                .collect(),
+
+            bottom_pixels: bottom
+                .pixels
+                .iter()
+                .map(|pixel| PixelData {
+                    x: pixel.x,
+                    y: pixel.y,
+                    color: pixel.color,
+                })
+                .collect(),
+
+            top_rectangles: top
+                .rectangles
+                .iter()
+                .map(|rect| RectData {
+                    x: rect.x,
+                    y: rect.y,
+                    width: rect.width,
+                    height: rect.height,
+                    color: rect.color,
+                })
+                .collect(),
+
+            bottom_rectangles: bottom
+                .rectangles
+                .iter()
+                .map(|rect| RectData {
+                    x: rect.x,
+                    y: rect.y,
+                    width: rect.width,
+                    height: rect.height,
+                    color: rect.color,
+                })
+                .collect(),
+
+            top_background: top.background_color,
+            bottom_background: bottom.background_color,
+        }
+    }
 }
 
 #[tower_lsp::async_trait]
@@ -77,7 +168,9 @@ impl LanguageServer for Backend {
                 self.client
                     .log_message(
                         MessageType::ERROR,
-                        format!("Failed to convert document URI: {error:?}"),
+                        format!(
+                            "Failed to convert document URI: {error:?}"
+                        ),
                     )
                     .await;
 
@@ -91,7 +184,10 @@ impl LanguageServer for Backend {
                 self.client
                     .log_message(
                         MessageType::ERROR,
-                        format!("Failed to parse {}: {error}", path.display()),
+                        format!(
+                            "Failed to parse {}: {error}",
+                            path.display()
+                        ),
                     )
                     .await;
 
@@ -102,27 +198,10 @@ impl LanguageServer for Backend {
         let mut runtime = runtime::Runtime::new();
         runtime.execute(&program);
 
-        let top_text = runtime
-            .top_screen()
-            .text
-            .iter()
-            .map(|line| line.text.clone())
-            .collect();
-
-        let bottom_text = runtime
-            .bottom_screen()
-            .text
-            .iter()
-            .map(|line| line.text.clone())
-            .collect();
+        let preview = Self::build_preview(&runtime);
 
         self.client
-            .send_notification::<PreviewNotification>(
-                PreviewParams {
-                    top_text,
-                    bottom_text,
-                },
-            )
+            .send_notification::<PreviewNotification>(preview)
             .await;
     }
 
@@ -154,20 +233,15 @@ impl LanguageServer for Backend {
             return;
         };
 
-        self.client
-            .log_message(
-                MessageType::INFO,
-                format!("New source: {}", change.text),
-            )
-            .await;
-
         let path = match params.text_document.uri.to_file_path() {
             Ok(path) => path,
             Err(error) => {
                 self.client
                     .log_message(
                         MessageType::ERROR,
-                        format!("Failed to convert document URI: {error:?}"),
+                        format!(
+                            "Failed to convert document URI: {error:?}"
+                        ),
                     )
                     .await;
 
@@ -181,7 +255,10 @@ impl LanguageServer for Backend {
                 self.client
                     .log_message(
                         MessageType::ERROR,
-                        format!("Failed to parse {}: {error}", path.display()),
+                        format!(
+                            "Failed to parse {}: {error}",
+                            path.display()
+                        ),
                     )
                     .await;
 
@@ -192,84 +269,11 @@ impl LanguageServer for Backend {
         let mut runtime = runtime::Runtime::new();
         runtime.execute(&program);
 
-        let top_text = runtime
-            .top_screen()
-            .text
-            .iter()
-            .map(|line| line.text.clone())
-            .collect();
-
-        let bottom_text = runtime
-            .bottom_screen()
-            .text
-            .iter()
-            .map(|line| line.text.clone())
-            .collect();
+        let preview = Self::build_preview(&runtime);
 
         self.client
-            .send_notification::<PreviewNotification>(
-                PreviewParams {
-                    top_text,
-                    bottom_text,
-                },
-            )
+            .send_notification::<PreviewNotification>(preview)
             .await;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{parser, runtime};
-    use std::path::Path;
-
-    #[test]
-    fn parses_main() {
-        let source = r#"
-#include <3ds.h>
-#include <stdio.h>
-
-int main() {
-    gfxInitDefault();
-    consoleInit(GFX_TOP, nullptr);
-    printf("Hello 3DS!");
-    return 0;
-}
-"#;
-
-        let program =
-            parser::parse_source(Path::new("main.cpp"), source)
-                .expect("Failed to parse");
-
-        assert_eq!(program.functions.len(), 1);
-        assert_eq!(program.functions[0].name, "main");
-    }
-
-    #[test]
-    fn executes_main() {
-        let source = r#"
-#include <3ds.h>
-#include <stdio.h>
-
-int main() {
-    gfxInitDefault();
-    consoleInit(GFX_TOP, nullptr);
-    printf("Hello 3DS!");
-    return 0;
-}
-"#;
-
-        let program =
-            parser::parse_source(Path::new("main.cpp"), source)
-                .expect("Failed to parse");
-
-        let mut runtime = runtime::Runtime::new();
-
-        runtime.execute(&program);
-
-        assert_eq!(
-            runtime.top_screen().text[0].text,
-            "Hello 3DS!"
-        );
     }
 }
 

@@ -91,7 +91,69 @@ impl Runtime {
                 self.console_initialized = false;
             }
 
+            "hbvClear" => {
+                if let Some(color) = Self::integer_argument(arguments, 0) {
+                    self.current_screen_mut().clear(color as u32);
+                }
+            }
+
+            "hbvDrawPixel" => {
+                let Some(x) = Self::integer_argument(arguments, 0) else {
+                    return;
+                };
+
+                let Some(y) = Self::integer_argument(arguments, 1) else {
+                    return;
+                };
+
+                let Some(color) = Self::integer_argument(arguments, 2) else {
+                    return;
+                };
+
+                self.current_screen_mut()
+                    .draw_pixel(x, y, color as u32);
+            }
+
+            "hbvDrawRect" => {
+                let Some(x) = Self::integer_argument(arguments, 0) else {
+                    return;
+                };
+
+                let Some(y) = Self::integer_argument(arguments, 1) else {
+                    return;
+                };
+
+                let Some(width) = Self::integer_argument(arguments, 2) else {
+                    return;
+                };
+
+                let Some(height) = Self::integer_argument(arguments, 3) else {
+                    return;
+                };
+
+                let Some(color) = Self::integer_argument(arguments, 4) else {
+                    return;
+                };
+
+                self.current_screen_mut()
+                    .draw_rect(x, y, width, height, color as u32); 
+            }
             _ => {}
         }
     }
+
+    fn current_screen_mut(&mut self) -> &mut VirtualScreen {
+        match self.current_screen {
+            ScreenTarget::Top => &mut self.top_screen,
+            ScreenTarget::Bottom => &mut self.bottom_screen,
+        }
+    }
+    
+    fn integer_argument(arguments: &[Expression], index: usize) -> Option<usize> {
+        match arguments.get(index) {
+            Some(Expression::Integer(value)) => (*value).try_into().ok(),
+            _ => None,
+        }
+    }
+
 }

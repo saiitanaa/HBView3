@@ -8,12 +8,35 @@ import {
 
 let previewPanel: vscode.WebviewPanel | undefined;
 
-let latestPreview:
-    | {
-          topText: string[];
-          bottomText: string[];
-      }
-    | undefined;
+let latestPreview: PreviewData | undefined;
+
+interface PreviewData {
+    top_text: string[];
+    bottom_text: string[];
+
+    top_pixels: PixelData[];
+    bottom_pixels: PixelData[];
+
+    top_rectangles: RectData[];
+    bottom_rectangles: RectData[];
+
+    top_background: number;
+    bottom_background: number;
+}
+
+interface PixelData {
+    x: number;
+    y: number;
+    color: number;
+}
+
+interface RectData {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    color: number;
+}
 
 export function activate(context: vscode.ExtensionContext) {
     const serverPath = path.join(
@@ -50,21 +73,12 @@ export function activate(context: vscode.ExtensionContext) {
 
     client.onNotification(
         "hbview3/preview",
-        (params: {
-            top_text: string[];
-            bottom_text: string[];
-        }) => {
-            latestPreview = {
-                topText: params.top_text,
-                bottomText: params.bottom_text,
-            };
-
-            console.log("HBView3 preview:", latestPreview);
+        (params: PreviewData) => {
+            latestPreview = params;
 
             previewPanel?.webview.postMessage({
                 type: "preview",
-                topText: params.top_text,
-                bottomText: params.bottom_text,
+                data: params,
             });
         },
     );
@@ -92,7 +106,9 @@ export function activate(context: vscode.ExtensionContext) {
             }
 
             const file = files[0];
-            const document = await vscode.workspace.openTextDocument(file);
+
+            const document =
+                await vscode.workspace.openTextDocument(file);
 
             previewPanel?.dispose();
 
@@ -119,15 +135,15 @@ export function activate(context: vscode.ExtensionContext) {
 
                     previewPanel?.webview.postMessage({
                         type: "preview",
-                        topText: latestPreview.topText,
-                        bottomText: latestPreview.bottomText,
+                        data: latestPreview,
                     });
                 },
                 undefined,
                 context.subscriptions,
             );
 
-            previewPanel.webview.html = getPreviewHtml(file.fsPath);
+            previewPanel.webview.html =
+                getPreviewHtml(file.fsPath);
 
             await vscode.window.showTextDocument(document, {
                 preview: false,
@@ -200,62 +216,143 @@ function getPreviewHtml(filePath: string): string {
     <div class="file">${escapeHtml(filePath)}</div>
 
     <div class="console">
-        <canvas id="top" width="400" height="240"></canvas>
-        <canvas id="bottom" width="320" height="240"></canvas>
+        <canvas
+            id="top"
+            width="400"
+            height="240"
+        ></canvas>
+
+        <canvas
+            id="bottom"
+            width="320"
+            height="240"
+        ></canvas>
     </div>
 
     <script>
         const vscode = acquireVsCodeApi();
 
-        const topCanvas = document.getElementById("top");
-        const bottomCanvas = document.getElementById("bottom");
+        const topCanvas =
+            document.getElementById("top");
 
-        const topContext = topCanvas.getContext("2d");
-        const bottomContext = bottomCanvas.getContext("2d");
+        const bottomCanvas =
+            document.getElementById("bottom");
+
+        const topContext =
+            topCanvas.getContext("2d");
+
+        const bottomContext =
+            bottomCanvas.getContext("2d");
 
         topContext.imageSmoothingEnabled = false;
         bottomContext.imageSmoothingEnabled = false;
 
-        topContext.fillStyle = "red";
-        topContext.fillRect(0, 0, 400, 240);
+        function colorToCss(color) {
+            const r = (color >> 16) & 0xff;
+            const g = (color >> 8) & 0xff;
+            const b = color & 0xff;
 
-        bottomContext.fillStyle = "blue";
-        bottomContext.fillRect(0, 0, 320, 240);
+            return "rgb(" + r + "," + g + "," + b + ")";
+        }
 
-        window.addEventListener("message", (event) => {
-            const message = event.data;
+        function renderScreen(
+            context,
+            width,
+            height,
+            background,
+            pixels,
+            rectangles,
+            text
+        ) {
+            context.clearRect(
+                0,
+                0,
+                width,
+                height
+            );
 
-            if (message.type !== "preview") {
-                return;
+            context.fillStyle =
+                colorToCss(background);
+
+            context.fillRect(
+                0,
+                0,
+                width,
+                height
+            );
+
+            for (const rect of rectangles) {
+                context.fillStyle =
+                    colorToCss(rect.color);
+
+                context.fillRect(
+                    rect.x,
+                    rect.y,
+                    rect.width,
+                    rect.height
+                );
             }
 
-            topContext.fillStyle = "red";
-            topContext.fillRect(0, 0, 400, 240);
+            for (const pixel of pixels) {
+                context.fillStyle =
+                    colorToCss(pixel.color);
 
-            bottomContext.fillStyle = "blue";
-            bottomContext.fillRect(0, 0, 320, 240);
-
-            topContext.fillStyle = "white";
-            topContext.font = "10px monospace";
-
-            message.topText.forEach((line, index) => {
-                topContext.fillText(
-                    line,
-                    8,
-                    16 + index * 16,
+                context.fillRect(
+                    pixel.x,
+                    pixel.y,
+                    1,
+                    1
                 );
-            });
+            }
 
-            bottomContext.fillStyle = "white";
+            context.fillStyle = "white";
+            context.font = "10px monospace";
 
-            message.bottomText.forEach((line, index) => {
-                bottomContext.fillText(
-                    line,
+            for (
+                let index = 0;
+                index < text.length;
+                index++
+            ) {
+                context.fillText(
+                    text[index],
                     8,
-                    16 + index * 16,
+                    16 + index * 16
                 );
-            });
-        });
+            }
+        }
+
+        window.addEventListener(
+            "message",
+            (event) => {
+                const message = event.data;
+
+                if (message.type !== "preview") {
+                    return;
+                }
+
+                const data = message.data;
+
+                renderScreen(
+                    topContext,
+                    400,
+                    240,
+                    data.top_background,
+                    data.top_pixels,
+                    data.top_rectangles,
+                    data.top_text
+                );
+
+                renderScreen(
+                    bottomContext,
+                    320,
+                    240,
+                    data.bottom_background,
+                    data.bottom_pixels,
+                    data.bottom_rectangles,
+                    data.bottom_text
+                );
+            }
+        );
 
         vscode.postMessage({
             type: "ready",

@@ -157,14 +157,18 @@ fn parse_expression(
                 .utf8_text(source)
                 .map_err(|error| error.to_string())?;
 
-            let value = text
-                .trim_end_matches(|character: char| {
-                    matches!(character, 'u' | 'U' | 'l' | 'L')
-                })
-                .parse::<i64>()
-                .map_err(|error| {
-                    format!("Failed to parse integer '{text}': {error}")
-                })?;
+            let text = text.trim_end_matches(|character: char| {
+                matches!(character, 'u' | 'U' | 'l' | 'L')
+            });
+
+            let value = if text.starts_with("0x") || text.starts_with("0X") {
+                i64::from_str_radix(&text[2..], 16)
+            } else {
+                text.parse::<i64>()
+            }
+            .map_err(|error| {
+                format!("Failed to parse integer '{text}': {error}")
+            })?;
 
             Ok(Expression::Integer(value))
         }
