@@ -9,6 +9,8 @@ import * as hbview3Core from "../wasm/hbview3_core.js";
 
 let previewPanel: vscode.WebviewPanel | undefined;
 let latestPreview: PreviewData | undefined;
+let previewFile: vscode.Uri | undefined;
+let previewLanguage: "c" | "cpp" | undefined;
 
 interface PreviewData {
     top_text: string[];
@@ -119,9 +121,11 @@ export async function activate(context: vscode.ExtensionContext) {
             }
 
             const file = files[0];
-
-            const document =
-                await vscode.workspace.openTextDocument(file);
+            previewFile = file;
+            const document = await vscode.workspace.openTextDocument(file);
+            previewLanguage = document.languageId === "cpp"
+                ? "cpp"
+                : "c";
 
             const source = document.getText();
 
@@ -204,6 +208,47 @@ export async function activate(context: vscode.ExtensionContext) {
         },
     );
 
+    const changeListener = vscode.workspace.onDidChangeTextDocument(
+        async (event) => {
+            if (!previewFile) {
+                return;
+            }
+            if (
+                event.document.uri.toString() !==
+                previewFile.toString()
+            ) {
+                return;
+            }
+            if (!previewPanel || !previewLanguage) {
+                return;
+            } 
+            try {
+                const program = await parseSource(
+                    context.extensionPath,
+                    event.document.getText(),
+                    previewLanguage,
+                );
+
+                const preview = hbview3Core.render(program);
+                latestPreview = preview as PreviewData;
+
+                previewPanel.webview.postMessage({
+                    type: "preview",
+                    data: latestPreview,
+                });
+
+                console.log(
+                    "HBView3 HOT Reload",
+                    preview,
+                );
+            } catch (error) {
+                console.error(
+                    "HBView3 HOT Reload Error !",
+                    error,
+                );
+            }
+        },
+    );
     context.subscriptions.push(command);
 }
 
