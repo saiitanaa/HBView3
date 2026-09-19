@@ -58,6 +58,51 @@ impl VirtualScreen {
         self.pixels.push(Pixel { x, y, color });
     }
 
+    pub fn draw_line(
+        &mut self,
+        x1: usize,
+        y1: usize,
+        x2: usize,
+        y2: usize,
+        color: u32,
+    ) {
+        let mut x1 = x1 as isize;
+        let mut y1 = y1 as isize;
+        let x2 = x2 as isize;
+        let y2 = y2 as isize;
+        
+        let dx = (x2 - x1).abs();
+        let sx = if x1 < x2 { 1 } else { -1 };
+        let dy = -(y2 - y1).abs();
+        let sy = if y1 < y2 { 1 } else { -1 };
+        
+        let mut error = dx + dy;
+        loop {
+            if x1 >= 0 && y1 >= 0 {
+                self.draw_pixel(
+                    x1 as usize,
+                    y1 as usize,
+                    color,
+                );
+            }
+
+            if x1 == x2 && y1 == y2 {
+                break;
+            }
+
+            let error2 = 2 * error;
+            if error2 >= dy {
+                error += dy;
+                x1 += sx;
+            }
+
+            if error2 <= dx {
+                error += dx;
+                y1 += sy;
+            }
+        }
+    }
+    
     pub fn draw_rect(
         &mut self,
         x: usize,

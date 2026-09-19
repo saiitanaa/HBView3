@@ -138,6 +138,31 @@ impl Runtime {
                 self.current_screen_mut()
                     .draw_rect(x, y, width, height, color as u32); 
             }
+
+            "hbvDrawLine" => {
+                let Some(x1) = Self::integer_argument(arguments, 0) else {
+                    return;
+                };
+
+                let Some(y1) = Self::integer_argument(arguments, 1) else {
+                    return;
+                };
+
+                let Some(x2) = Self::integer_argument(arguments, 2) else {
+                    return;
+                };
+
+                let Some(y2) = Self::integer_argument(arguments, 3) else {
+                    return;
+                };
+
+                let Some(color) = Self::integer_argument(arguments, 4) else {
+                    return;
+                };
+
+                self.current_screen_mut()
+                    .draw_line(x1, y1, x2, y2, color as u32);
+            }
             _ => {}
         }
     }
