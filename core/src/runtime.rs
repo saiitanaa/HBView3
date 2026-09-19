@@ -64,7 +64,7 @@ impl Runtime {
             "consoleInit" => {
                 self.console_initialized = true;
 
-                if let Some(Expression::Identifier(identifier)) = arguments.first() {
+                if let Some(Expression::Identifier { name: identifier }) = arguments.first() {
                     self.current_screen = match identifier.as_str() {
                         "GFX_BOTTOM" => ScreenTarget::Bottom,
                         _ => ScreenTarget::Top,
@@ -73,7 +73,7 @@ impl Runtime {
             }
 
             "printf" => {
-                if let Some(Expression::String(text)) = arguments.first() {
+                if let Some(Expression::String { value: text }) = arguments.first() {
                     match self.current_screen {
                         ScreenTarget::Top => {
                             self.top_screen.write_text(text);
@@ -151,7 +151,7 @@ impl Runtime {
     
     fn integer_argument(arguments: &[Expression], index: usize) -> Option<usize> {
         match arguments.get(index) {
-            Some(Expression::Integer(value)) => (*value).try_into().ok(),
+            Some(Expression::Integer { value }) => (*value).try_into().ok(),
             _ => None,
         }
     }

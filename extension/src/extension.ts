@@ -1,13 +1,13 @@
-import * as path from "path";
 import * as vscode from "vscode";
 import {
     LanguageClient,
     LanguageClientOptions,
     ServerOptions,
 } from "vscode-languageclient/node";
+import { parseSource } from "./treeSitter";
+import * as hbview3Core from "../wasm/hbview3_core.js";
 
 let previewPanel: vscode.WebviewPanel | undefined;
-
 let latestPreview: PreviewData | undefined;
 
 interface PreviewData {
@@ -38,7 +38,14 @@ interface RectData {
     color: number;
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
+    const wasmMessage = hbview3Core.test();
+
+    vscode.window.showInformationMessage(
+        `HBView3 WASM : ${wasmMessage}`
+    );
+
+    /*
     const serverPath = path.join(
         context.extensionPath,
         "..",
@@ -88,6 +95,7 @@ export function activate(context: vscode.ExtensionContext) {
     console.log("HBView3 server:", serverPath);
 
     client.start();
+    */
 
     const command = vscode.commands.registerCommand(
         "hbview3.openPreview",
@@ -97,7 +105,12 @@ export function activate(context: vscode.ExtensionContext) {
                 canSelectFolders: false,
                 canSelectMany: false,
                 filters: {
-                    "C/C++": ["c", "cpp", "cc", "cxx"],
+                    "C/C++": [
+                        "c",
+                        "cpp",
+                        "cc",
+                        "cxx",
+                    ],
                 },
             });
 
@@ -109,6 +122,43 @@ export function activate(context: vscode.ExtensionContext) {
 
             const document =
                 await vscode.workspace.openTextDocument(file);
+
+            const source = document.getText();
+
+            const language =
+                document.languageId === "cpp"
+                    ? "cpp"
+                    : "c";
+
+            try {
+                const program = await parseSource(
+                    context.extensionPath,
+                    source,
+                    language,
+                );
+
+                console.log(
+                    "HBView3 Parsed IR:",
+                    JSON.stringify(program, null, 2),
+                );
+
+                const preview =
+                    hbview3Core.render(program);
+
+                latestPreview =
+                    preview as PreviewData;
+
+                console.log(
+                    "HBView3 Preview:",
+                    preview,
+                );
+            } catch (error) {
+                vscode.window.showErrorMessage(
+                    `HBView3 render error: ${String(error)}`,
+                );
+
+                return;
+            }
 
             previewPanel?.dispose();
 
@@ -145,9 +195,12 @@ export function activate(context: vscode.ExtensionContext) {
             previewPanel.webview.html =
                 getPreviewHtml(file.fsPath);
 
-            await vscode.window.showTextDocument(document, {
-                preview: false,
-            });
+            await vscode.window.showTextDocument(
+                document,
+                {
+                    preview: false,
+                },
+            );
         },
     );
 

@@ -37,9 +37,9 @@ pub fn parse_source(path: &Path, source: &str) -> Result<Program, String> {
 
 fn language_for_path(path: &Path) -> Result<Language, String> {
     match path.extension().and_then(|extension| extension.to_str()) {
-        Some("c") => Ok(tree_sitter_c::LANGUAGE.into()),
+        Some("c") => Ok(tree_sitter::Language.into()),
         Some("cpp") | Some("cc") | Some("cxx") => {
-            Ok(tree_sitter_cpp::LANGUAGE.into())
+            Ok(tree_sitter::Language.into())
         }
         _ => Err(format!(
             "Unsupported source file: {}",
