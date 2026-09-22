@@ -152,6 +152,21 @@ impl VirtualScreen {
     }
 
 
+    pub fn draw_triangle (
+        &mut self,
+        x1: usize,
+        y1: usize,
+        x2: usize,
+        y2: usize,
+        x3: usize,
+        y3: usize,
+        color: u32,
+    ) {
+        self.draw_line(x1, y1, x2, y2, color);
+        self.draw_line(x2, y2, x3, y3, color);
+        self.draw_line(x3, y3, x1, y1, color);
+    }
+
     pub fn draw_rect(
         &mut self,
         x: usize,

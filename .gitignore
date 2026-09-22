@@ -10,6 +10,7 @@ build/
 .env
 .env.*
 !.env.example
+compile.txt
 
 # IDE
 .vscode/
