@@ -78,7 +78,7 @@ fn collect_functions(
     for child in node.children(&mut cursor) {
         collect_functions(child, source, functions)?;
     }
-
+    
     Ok(())
 }
 

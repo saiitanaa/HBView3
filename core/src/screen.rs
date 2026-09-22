@@ -103,6 +103,55 @@ impl VirtualScreen {
         }
     }
     
+    pub fn draw_circle(
+        &mut self,
+        center_x: usize,
+        center_y: usize,
+        radius: usize,
+        color: u32,
+    ) {
+        let center_x = center_x as isize;
+        let center_y = center_y as isize;
+        let radius = radius as isize;
+
+        let mut x = radius;
+        let mut y = 0isize;
+        let mut error = 1 - radius;
+
+        while x >= y {
+            let points = [
+                (center_x + x, center_y + y),
+                (center_x + y, center_y + x),
+                (center_x - y, center_y + x),
+                (center_x - x, center_y + y),
+                (center_x - x, center_y - y),
+                (center_x - y, center_y - x),
+                (center_x + y, center_y - x),
+                (center_x + x, center_y - y),
+            ];
+
+            for (x, y) in points {
+                if x >= 0 && y >= 0 {
+                    self.draw_pixel(
+                        x as usize,
+                        y as usize,
+                        color,
+                    );
+                }
+            }
+
+            y += 1;
+
+            if error < 0 {
+                error += 2 * y + 1;
+            } else {
+                x -= 1;
+                error += 2 * (y - x) + 1;
+            }
+        }
+    }
+
+
     pub fn draw_rect(
         &mut self,
         x: usize,

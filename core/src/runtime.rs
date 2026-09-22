@@ -163,6 +163,27 @@ impl Runtime {
                 self.current_screen_mut()
                     .draw_line(x1, y1, x2, y2, color as u32);
             }
+
+            "hbvDrawCircle" => {
+                let Some(center_x) = Self::integer_argument(arguments, 0) else {
+                    return;
+                };
+
+                let Some(center_y) = Self::integer_argument(arguments, 1) else {
+                    return;
+                };
+
+                let Some(radius) = Self::integer_argument(arguments, 2) else {
+                    return;
+                };
+
+                let Some(color) = Self::integer_argument(arguments, 3) else {
+                    return;
+                };
+
+                self.current_screen_mut()
+                    .draw_circle(center_x, center_y, radius, color as u32);
+            }
             _ => {}
         }
     }
