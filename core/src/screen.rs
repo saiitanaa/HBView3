@@ -22,6 +22,37 @@ pub struct Rect {
     pub color: u32,
 }
 
+pub enum Shape {
+    Rect{
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+    },
+
+    Circle {
+        center_x: usize,
+        center_y: usize,
+        radius: usize,
+    },
+
+    Triangle {
+        x1: usize,
+        y1: usize,
+        x2: usize,
+        y2: usize,
+        x3: usize,
+        y3: usize,
+    },
+
+    Ellipse {
+        center_x: usize,
+        center_y: usize,
+        radius_x: usize,
+        radius_y: usize,
+    },
+}
+
 pub struct VirtualScreen {
     pub width: usize,
     pub height: usize,
@@ -56,6 +87,51 @@ impl VirtualScreen {
         }
 
         self.pixels.push(Pixel { x, y, color });
+    }
+
+    pub fn fill_shape(
+        &mut self,
+        shape: Shape,
+        color: u32,
+    ) {
+        match shape {
+            Shape::Rect {
+                x,
+                y,
+                width,
+                height,
+            } => {
+                self.fill_rect(x, y, width, height, color);
+            }
+
+            Shape::Circle {
+                center_x,
+                center_y,
+                radius,
+            } => {
+                self.fill_circle(center_x, center_y, radius, color);
+            }
+
+            Shape::Triangle {
+                x1,
+                y1,
+                x2,
+                y2,
+                x3,
+                y3,
+            } => {
+                self.fill_triangle(x1, y1, x2, y2, x3, y3, color,);
+            }
+
+            Shape::Ellipse {
+                center_x,
+                center_y,
+                radius_x,
+                radius_y,
+            } => {
+                self.fill_ellipse(center_x, center_y, radius_x, radius_y, color);
+            }
+        }
     }
 
     pub fn draw_line(
@@ -99,6 +175,50 @@ impl VirtualScreen {
             if error2 <= dx {
                 error += dx;
                 y1 += sy;
+            }
+        }
+    }
+
+    pub fn fill_circle(
+        &mut self,
+        center_x: usize,
+        center_y: usize,
+        radius: usize,
+        color: u32,
+    ) {
+        let center_x = center_x as isize;
+        let center_y = center_y as isize;
+        let radius = radius as isize;
+
+        let mut x = radius;
+        let mut y = 0isize;
+        let mut error = 1 - radius;
+
+        while x >= y {
+            let lines = [
+                (center_y + y, center_x - x, center_x + x),
+                (center_y - y, center_x - x, center_x + x),
+                (center_y + x, center_x - y, center_x + y),
+                (center_y - x, center_x - y, center_x + y),
+            ];
+
+            for (y, start_x, end_x) in lines {
+                if y < 0 {
+                    continue;
+                }
+
+                for x in start_x..=end_x {
+                    if x >= 0 {
+                        self.draw_pixel(x as usize, y as usize, color);
+                    }
+                }
+            }
+            y += 1;
+            if error < 0 {
+                error += 2 * y + 1;
+            } else {
+                x -= 1;
+                error += 2 * (y - x) + 1;
             }
         }
     }
@@ -147,6 +267,48 @@ impl VirtualScreen {
             } else {
                 x -= 1;
                 error += 2 * (y - x) + 1;
+            }
+        }
+    }
+
+    pub fn fill_ellipse(
+        &mut self,
+        center_x: usize,
+        center_y: usize,
+        radius_x: usize,
+        radius_y: usize,
+        color: u32,
+    ) {
+        let center_x = center_x as isize;
+        let center_y = center_y as isize;
+        let radius_x = radius_x as isize;
+        let radius_y = radius_y as isize;
+
+        if radius_x == 0 || radius_y == 0 {
+            return;
+        }
+
+        for y in -radius_y..=radius_y {
+            let normalized_y =
+                y as f64 / radius_y as f64;
+
+            let x =
+                radius_x as f64
+                    * (1.0 - normalized_y * normalized_y).sqrt();
+
+            let x = x as isize;
+
+            for current_x in -x..=x {
+                let pixel_x = center_x + current_x;
+                let pixel_y = center_y + y;
+
+                if pixel_x >= 0 && pixel_y >= 0 {
+                    self.draw_pixel(
+                        pixel_x as usize,
+                        pixel_y as usize,
+                        color,
+                    );
+                }
             }
         }
     }
@@ -201,7 +363,7 @@ impl VirtualScreen {
             self.draw_pixel((center_x - x) as usize, (center_y + y) as usize, color);
             self.draw_pixel((center_x - x) as usize, (center_y - y) as usize, color);
             self.draw_pixel((center_x + x) as usize, (center_y - y) as usize, color);
-            
+
             y -= 1;
             dy -= 2 * radius_x_squared;
             if decision > 0 {
@@ -210,6 +372,60 @@ impl VirtualScreen {
                 x += 1;
                 dx +=2 * radius_y_squared;
                 decision += dx - dy + radius_x_squared;
+            }
+        }
+    }
+
+    pub fn fill_triangle(
+        &mut self,
+        x1: usize,
+        y1: usize,
+        x2: usize,
+        y2: usize,
+        x3: usize,
+        y3: usize,
+        color: u32,
+    ) {
+        let min_y = y1.min(y2).min(y3);
+        let max_y = y1.max(y2).max(y3);
+
+        for y in min_y..=max_y {
+            let mut intersections = Vec::new();
+            let edges = [
+                (x1, y1, x2, y2),
+                (x2, y2, x3, y3),
+                (x3, y3, x1, y1),
+            ];
+
+            for &(x_start, y_start, x_end, y_end) in &edges {
+                if y_start == y_end {
+                    continue;
+                }
+
+                let min_edge_y = y_start.min(y_end);
+                let max_edge_y = y_start.max(y_end);
+
+                if y < min_edge_y || y > max_edge_y {
+                    continue;
+                }
+
+                let x = x_start as f32 + (y as f32 - y_start as f32) * (x_end as f32 - x_start as f32) / (y_end as f32 - y_start as f32);
+                intersections.push(x as isize);
+            }
+
+            if intersections.len() < 2 {
+                continue;
+            }
+
+            intersections.sort_unstable();
+
+            let start_x = intersections[0];
+            let end_x = intersections[intersections.len() - 1];
+
+            for x in start_x..=end_x {
+                if x >= 0 {
+                    self.draw_pixel(x as usize, y, color);
+                }
             }
         }
     }
@@ -227,6 +443,21 @@ impl VirtualScreen {
         self.draw_line(x1, y1, x2, y2, color);
         self.draw_line(x2, y2, x3, y3, color);
         self.draw_line(x3, y3, x1, y1, color);
+    }
+
+    pub fn fill_rect(
+        &mut self,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        color: u32,
+    ) {
+        for current_y in y..y + height {
+            for current_x in x..x + width {
+                self.draw_pixel(current_x, current_y, color);
+            }
+        }
     }
 
     pub fn draw_rect(

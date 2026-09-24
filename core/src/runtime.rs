@@ -97,6 +97,30 @@ impl Runtime {
                 }
             }
 
+            "hbvFillRect" => {
+                let Some(x) = Self::integer_argument(arguments, 0) else {
+                    return;
+                };
+
+                let Some(y) = Self::integer_argument(arguments, 1) else {
+                    return;
+                };
+
+                let Some(width) = Self::integer_argument(arguments, 2) else {
+                    return;
+                };
+
+                let Some(height) = Self::integer_argument(arguments, 3) else {
+                    return;
+                };
+
+                let Some(color) = Self::integer_argument(arguments, 4) else {
+                    return;
+                };
+
+                self.current_screen_mut().fill_rect(x, y, width, height, color as u32);
+            }
+
             "hbvDrawPixel" => {
                 let Some(x) = Self::integer_argument(arguments, 0) else {
                     return;
@@ -110,8 +134,7 @@ impl Runtime {
                     return;
                 };
 
-                self.current_screen_mut()
-                    .draw_pixel(x, y, color as u32);
+                self.current_screen_mut().draw_pixel(x, y, color as u32);
             }
 
             "hbvDrawRect" => {
@@ -135,8 +158,7 @@ impl Runtime {
                     return;
                 };
 
-                self.current_screen_mut()
-                    .draw_rect(x, y, width, height, color as u32); 
+                self.current_screen_mut().draw_rect(x, y, width, height, color as u32); 
             }
 
             "hbvDrawLine" => {
@@ -160,8 +182,7 @@ impl Runtime {
                     return;
                 };
 
-                self.current_screen_mut()
-                    .draw_line(x1, y1, x2, y2, color as u32);
+                self.current_screen_mut().draw_line(x1, y1, x2, y2, color as u32);
             }
 
             "hbvDrawCircle" => {
@@ -181,8 +202,7 @@ impl Runtime {
                     return;
                 };
 
-                self.current_screen_mut()
-                    .draw_circle(center_x, center_y, radius, color as u32);
+                self.current_screen_mut().draw_circle(center_x, center_y, radius, color as u32);
             }
 
             "hbvDrawEllipse" => {
