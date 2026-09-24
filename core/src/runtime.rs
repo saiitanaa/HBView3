@@ -1,5 +1,6 @@
 use crate::ir::{Expression, Program, Statement};
 use crate::screen::VirtualScreen;
+use std::collections::HashMap;
 
 pub struct Runtime {
     initialized: bool,
@@ -7,6 +8,7 @@ pub struct Runtime {
     current_screen: ScreenTarget,
     top_screen: VirtualScreen,
     bottom_screen: VirtualScreen,
+    variables: HashMap<String, Expression>,
 }
 
 enum ScreenTarget {
@@ -22,6 +24,7 @@ impl Runtime {
             current_screen: ScreenTarget::Top,
             top_screen: VirtualScreen::new(400, 240),
             bottom_screen: VirtualScreen::new(320, 240),
+            variables: HashMap::new(),
         }
     }
 
@@ -38,6 +41,10 @@ impl Runtime {
             match statement {
                 Statement::Call { name, arguments } => {
                     self.call(name, arguments);
+                }
+
+                Statement::Variable { name, value } => {
+                    self.variables.insert(name.clone(), value.clone());
                 }
 
                 Statement::Return => {
@@ -73,15 +80,68 @@ impl Runtime {
             }
 
             "printf" => {
-                if let Some(Expression::String { value: text }) = arguments.first() {
-                    match self.current_screen {
-                        ScreenTarget::Top => {
-                            self.top_screen.write_text(text);
+                let Some(Expression::String { value: format }) = arguments.first() else {
+                    return;
+                };
+
+                let mut output = String::new();
+                let mut argument_index = 1;
+                let mut chars = format.chars();
+
+                while let Some(character) = chars.next() {
+                    if character != '%' {
+                        output.push(character);
+                        continue;
+                    }
+
+                    let Some(format_character) = chars.next() else {
+                        output.push('%');
+                        break;
+                    };
+
+                    match format_character {
+                        '%' => {
+                            output.push('%');
                         }
 
-                        ScreenTarget::Bottom => {
-                            self.bottom_screen.write_text(text);
+                        'd' => {
+                            if let Some(argument) = arguments.get(argument_index) {
+                                match argument {
+                                    Expression::Integer { value } => {
+                                        output.push_str(&value.to_string());
+                                    }
+
+                                    Expression::Identifier { name } => {
+                                        if let Some(Expression::Integer { value }) =
+                                            self.variables.get(name)
+                                        {
+                                            output.push_str(
+                                                &value.to_string(),
+                                            );
+                                        }
+                                    }
+
+                                    _ => {}
+                                }
+                            }
+
+                            argument_index += 1;
                         }
+
+                        _ => {
+                            output.push('%');
+                            output.push(format_character);
+                        }
+                    }
+                }
+
+                match self.current_screen {
+                    ScreenTarget::Top => {
+                        self.top_screen.write_text(&output);
+                    }
+
+                    ScreenTarget::Bottom => {
+                        self.bottom_screen.write_text(&output);
                     }
                 }
             }

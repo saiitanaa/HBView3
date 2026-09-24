@@ -22,6 +22,11 @@ export type Statement =
           arguments: Expression[];
       }
     | {
+          type: "variable";
+          name: string;
+          value: Expression;
+      }
+    | {
           type: "return";
       };
 
@@ -123,6 +128,45 @@ export async function parseSource(
             };
 
             for (const statement of body.namedChildren) {
+                if (statement.type === "declaration") {
+                    const declarator =
+                        statement.namedChildren.find(
+                            child =>
+                                child.type ===
+                                "init_declarator",
+                        );
+
+                    if (!declarator) {
+                        continue;
+                    }
+
+                    const nameNode =
+                        declarator.childForFieldName(
+                            "declarator",
+                        );
+
+                    const valueNode =
+                        declarator.childForFieldName(
+                            "value",
+                        );
+
+                    if (!nameNode || !valueNode) {
+                        continue;
+                    }
+
+                    const value =
+                        parseExpression(valueNode);
+
+                    if (!value) {
+                        continue;
+                    }
+
+                    parsedFunction.body.push({
+                        type: "variable",
+                        name: nameNode.text,
+                        value,
+                    });
+                }
                 if (
                     statement.type ===
                     "expression_statement"

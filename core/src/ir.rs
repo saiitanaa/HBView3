@@ -11,7 +11,7 @@ pub struct Function {
     pub body: Vec<Statement>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type")]
 pub enum Statement {
     #[serde(rename = "call")]
@@ -20,11 +20,17 @@ pub enum Statement {
         arguments: Vec<Expression>,
     },
 
+    #[serde(rename = "variable")]
+    Variable {
+        name: String,
+        value: Expression,
+    },
+
     #[serde(rename = "return")]
     Return,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type")]
 pub enum Expression {
     #[serde(rename = "integer")]
