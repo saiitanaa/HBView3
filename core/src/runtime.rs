@@ -185,6 +185,30 @@ impl Runtime {
                     .draw_circle(center_x, center_y, radius, color as u32);
             }
 
+            "hbvDrawEllipse" => {
+                let Some(center_x) = Self::integer_argument(arguments, 0) else {
+                    return;
+                };
+
+                let Some(center_y) = Self::integer_argument(arguments, 1) else {
+                    return;
+                };
+
+                let Some(radius_x) = Self::integer_argument(arguments, 2) else {
+                    return;
+                };
+
+                let Some(radius_y) = Self::integer_argument(arguments, 3) else {
+                    return;
+                };
+
+                let Some(color) = Self::integer_argument(arguments, 4) else {
+                    return;
+                };
+
+                self.current_screen_mut().draw_ellipse(center_x, center_y, radius_x, radius_y, color as u32);
+            }
+
             "hbvDrawTriangle" => {
                 let Some(x1) = Self::integer_argument(arguments, 0) else {
                     return;

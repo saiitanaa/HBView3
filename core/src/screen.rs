@@ -151,6 +151,68 @@ impl VirtualScreen {
         }
     }
 
+    pub fn draw_ellipse (
+        &mut self,
+        center_x: usize,
+        center_y: usize,
+        radius_x: usize,
+        radius_y: usize,
+        color: u32,
+    ) {
+        let center_x = center_x as isize;
+        let center_y = center_y as isize;
+        let radius_x = radius_x as isize;
+        let radius_y = radius_y as isize;
+
+        if radius_x == 0 || radius_y == 0 {
+            return;
+        }
+
+        let radius_x_squared = radius_x * radius_x;
+        let radius_y_squared = radius_y * radius_y;
+        let mut x = 0isize;
+        let mut y = radius_y;
+        let mut dx = 2 * radius_y_squared * x;
+        let mut dy = 2 * radius_x_squared * y;
+        let mut decision = radius_y_squared - radius_x_squared * radius_y + radius_x_squared / 4;
+
+        while dx < dy {
+            self.draw_pixel((center_x + x) as usize, (center_y + y) as usize, color);
+            self.draw_pixel((center_x - x) as usize, (center_y - y) as usize, color);
+            self.draw_pixel((center_x - x) as usize, (center_y - y) as usize, color);
+            self.draw_pixel((center_x + x) as usize, (center_y - y) as usize, color);
+            self.draw_pixel((center_x - x) as usize, (center_y + y) as usize, color);
+
+            x += 1;
+            dx += 2 * radius_y_squared;
+            if decision < 0 {
+                decision += dx + radius_y_squared;
+            } else {
+                y -= 1;
+                dy -= 2 * radius_x_squared;
+                decision += dx - dy + radius_y_squared;
+            }
+        }
+
+        decision = radius_y_squared * (x * x + x) + radius_x_squared * (y * y - 2 * y + 1) - radius_x_squared * radius_y_squared;
+        while y >= 0 {
+            self.draw_pixel((center_x + x) as usize, (center_y + y) as usize, color);
+            self.draw_pixel((center_x + x) as usize, (center_y + y) as usize, color);
+            self.draw_pixel((center_x - x) as usize, (center_y + y) as usize, color);
+            self.draw_pixel((center_x - x) as usize, (center_y - y) as usize, color);
+            self.draw_pixel((center_x + x) as usize, (center_y - y) as usize, color);
+            
+            y -= 1;
+            dy -= 2 * radius_x_squared;
+            if decision > 0 {
+                decision += radius_x_squared - dy;
+            } else {
+                x += 1;
+                dx +=2 * radius_y_squared;
+                decision += dx - dy + radius_x_squared;
+            }
+        }
+    }
 
     pub fn draw_triangle (
         &mut self,
